@@ -15,8 +15,16 @@ export default function Chat({ s }: { s: Session }) {
   const [text, setText] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
   const [newDm, setNewDm] = useState(false), [pick, setPick] = useState<Picked>({ people: [], external: [] });
   const end = useRef<HTMLDivElement>(null), stick = useRef(true);
+  // Opened from the org chart (#/chat?dm=<id>): do not flash the default channel first, and never lose the new conversation to a slower, older list response
+  const wantDm = useRef(new URLSearchParams(location.hash.split("?")[1] ?? "").get("dm"));
+  const [opening, setOpening] = useState(!!wantDm.current);
+  const known = useRef<Channel[]>([]);
 
-  const loadChannels = useCallback(() => world.get<Channel[]>("/chat/channels", s).then((c) => { setChs(c); setCur((x) => x ?? (c.find((k) => !k.dm && k.name.includes("팀")) ?? c[0])?.id ?? null); }).catch(() => setChs([])), [s]);
+  const loadChannels = useCallback(() => world.get<Channel[]>("/chat/channels", s).then((c) => {
+    const all = [...c, ...known.current.filter((k) => !c.some((x) => x.id === k.id))];     // a response that left before the DM existed must not remove it
+    setChs(all);
+    setCur((x) => x ?? (wantDm.current ? null : (all.find((k) => !k.dm && k.name.includes("팀")) ?? all[0])?.id ?? null));
+  }).catch(() => setChs([])), [s]);
   useEffect(() => { void loadChannels(); }, [loadChannels, live.chat]);
   const loadMsgs = useCallback(async (id: string) => {
     try { const r = await world.get<{ items: ChatMsg[]; typing: boolean }>(`/chat/channels/${id}/messages?hours=168&limit=80&latest=true`, s); setMsgs(r.items); setTyping(r.typing); } catch { setMsgs([]); }
@@ -30,7 +38,10 @@ export default function Chat({ s }: { s: Session }) {
   useEffect(() => {
     const to = new URLSearchParams(location.hash.split("?")[1] ?? "").get("dm");
     if (!to) return;
-    world.post<Channel>("/chat/dm", { to }, s).then(async (c) => { await loadChannels(); setCur(c.id); history.replaceState(null, "", "#/chat"); }).catch(() => {});
+    world.post<Channel>("/chat/dm", { to }, s).then(async (c) => {
+      known.current = [...known.current.filter((k) => k.id !== c.id), c];
+      await loadChannels(); setCur(c.id); wantDm.current = null; setOpening(false); history.replaceState(null, "", "#/chat");
+    }).catch(() => { wantDm.current = null; setOpening(false); void loadChannels(); });
   }, [s, loadChannels]);
   const send = async () => {
     if (!cur || !text.trim() || busy) return;
@@ -42,7 +53,7 @@ export default function Chat({ s }: { s: Session }) {
   const startDm = async (v: Picked) => {
     setPick(v);
     const p = v.people[0]; if (!p) return;
-    try { const c = await world.post<Channel>("/chat/dm", { to: p.id }, s); await loadChannels(); setCur(c.id); setNewDm(false); setPick({ people: [], external: [] }); }
+    try { const c = await world.post<Channel>("/chat/dm", { to: p.id }, s); known.current = [...known.current.filter((k) => k.id !== c.id), c]; await loadChannels(); setCur(c.id); setNewDm(false); setPick({ people: [], external: [] }); }
     catch (e) { setErr(errText(e)); }
   };
   const current = chs?.find((c) => c.id === cur);
@@ -62,7 +73,7 @@ export default function Chat({ s }: { s: Session }) {
             {chans.map((c) => <button key={c.id} aria-current={cur === c.id} onClick={() => setCur(c.id)}><span className="row"><span className="grow trunc"># {c.name}{c.private && <span className="small faint"> · 비공개</span>}</span>{badge(c)}</span></button>)}
           </div></Card>
           <Card guide="chat-messages">
-            {!current ? <Empty>왼쪽에서 대화를 고르거나 '새 대화'로 동료에게 말을 걸어 보세요.</Empty> : (
+            {!current ? (opening ? <Skeletons n={2} /> : <Empty>왼쪽에서 대화를 고르거나 '새 대화'로 동료에게 말을 걸어 보세요.</Empty>) : (
               <div className="chatbox">
                 <h2 style={{ marginBottom: 8 }}>{current.dm ? current.name : `# ${current.name}`}</h2>
                 <div className="chatlog" role="log" aria-live="polite" onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>

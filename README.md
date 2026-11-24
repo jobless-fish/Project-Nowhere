@@ -209,6 +209,6 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - 배포 전 재채점(`python -m eval.feedback_eval`)이 이 동작을 그대로 재현해서, 규칙을 바꿀 때 "숨기면 사라진다 / 숨길 수 없는 것은 남는다"가 지켜지는지 확인해요.
 
 ## 점검과 AI 테스트
-- `python check.py --browser` 한 번으로 테스트·빌드·평가·권한 점검·실제 브라우저 흐름까지 13단계를 확인해요 (`--quick`은 40초).
+- `python check.py --browser` 한 번으로 테스트·빌드·평가·권한 점검·실제 브라우저 흐름까지 14단계를 확인해요 (`--quick`은 40초).
 - Claude나 ChatGPT(Codex)가 내 PC에서 직접 테스트하게 하는 방법과 붙여 넣을 문장은 [`docs/AI_TEST_GUIDE.md`](docs/AI_TEST_GUIDE.md).
 - 지난 점검 결과: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).

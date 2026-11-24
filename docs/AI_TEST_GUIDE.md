@@ -24,7 +24,7 @@ macOS/Linux는 `.venv\Scripts\activate` 대신 `source .venv/bin/activate`.
 ```bash
 python check.py --browser
 ```
-약 3분. 끝나면 이런 표가 나와요. **13개가 모두 PASS면 정상**이에요.
+약 3분. 끝나면 이런 표가 나와요. **14개가 모두 PASS면 정상**이에요.
 
 | 단계 | 정상일 때 |
 |---|---|
@@ -38,6 +38,7 @@ python check.py --browser
 | permission probes | `22/22 probes as expected` |
 | browser sweep | `runs: 16 | runs with problems: 0` |
 | browser work flows | `19/19 flow checks passed` |
+| browser slow-network DM | `titles seen over time: ["박준영"]` (대화가 열리기 전에 다른 채널이 깜빡이지 않음) |
 
 - 빠르게만: `python check.py --quick` (테스트 + 타입 검사, 약 40초)
 - 브라우저 없이: `python check.py` (약 2분)

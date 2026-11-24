@@ -178,10 +178,10 @@ def stage_live(browser: bool, built: bool):
         if not have:
             record("browser sweep", "SKIP", "Playwright not installed: cd web && npm install && npx playwright install chromium")
             return
-        for name, script in (("browser sweep", "e2e/sweep.cjs"), ("browser work flows", "e2e/flows.cjs")):
+        for name, script in (("browser sweep", "e2e/sweep.cjs"), ("browser work flows", "e2e/flows.cjs"), ("browser slow-network DM", "e2e/dm-race.cjs")):
             code, out, secs = sh([node, script], cwd=WEB, env={"BASE_URL": srv.base + "/"}, timeout=900)
-            line = last(out, r"(runs: \d+ \| runs with problems: \d+)") or last(out, r"(\d+/\d+ flow checks passed)") or out[-250:]
-            fails = [l for l in out.splitlines() if l.startswith(("FAIL", " !"))]
+            line = last(out, r"(runs: \d+ \| runs with problems: \d+)") or last(out, r"(\d+/\d+ flow checks passed)") or last(out, r"(titles seen over time: .+)") or out[-250:]
+            fails = [l for l in out.splitlines() if l.startswith(("FAIL", " !", "final title"))]
             record(name, "PASS" if code == 0 else "FAIL", line + ("\n" + "\n".join(fails[:6]) if fails else ""), secs)
     finally:
         srv.__exit__()
