@@ -16,6 +16,6 @@ def get_client() -> LLMClient:
         return OpenAICompatClient(
             os.getenv("LLM_BASE_URL", "http://localhost:11434/v1"),  # Ollama default
             os.getenv("LLM_MODEL", "qwen2.5:7b"), os.getenv("LLM_API_KEY", ""),
-            max_retries=int(os.getenv("LLM_MAX_RETRIES", "4")), timeout=float(os.getenv("LLM_TIMEOUT", "60")))
+            max_retries=int(os.getenv("LLM_MAX_RETRIES", "4")), timeout=float(os.getenv("LLM_TIMEOUT", "60")), max_tokens=int(os.getenv("LLM_MAX_TOKENS", "1200")))
     from .mock import MockClient
     return MockClient()

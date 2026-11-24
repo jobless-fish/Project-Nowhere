@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from .auth import current_user, sign
-from .store import CHANNELS, COMPANY, PASSWORD, store
+from .store import COMPANY, PASSWORD, store
 
 log = logging.getLogger("world")
 
@@ -95,8 +95,9 @@ mail = APIRouter(prefix="/mail")
 
 
 def _mail_out(m):
-    sender = _person(m["sender"]) if m["sender"] else {"id": None, "name": m["external"], "email": m["external"]}
-    return {"id": m["id"], "from": sender, "external": m["external"] is not None, "to": m["to"],
+    sender = _person(m["sender"]) if m["sender"] else {"id": None, "name": m.get("external_name") or m["external"], "email": m["external"]}
+    is_ext = m["external"] is not None and not m["external"].endswith("@nowhere.example")
+    return {"id": m["id"], "from": sender, "external": is_ext, "to": m["to"],
             "subject": m["subject"], "body": m["body"], "ts": m["ts"]}
 
 
@@ -139,16 +140,16 @@ chat = APIRouter(prefix="/chat")
 
 @chat.get("/channels")
 def channels(me=Depends(current_user)):
-    return [{"id": c, "name": v[0], "private": v[1]} for c, v in CHANNELS.items() if me["id"] in store.members(c)]
+    return [{"id": c, "name": v[0], "private": v[1]} for c, v in store.channels.items() if me["id"] in store.members(c)]
 
 
 @chat.get("/channels/{cid}/messages")
 def messages(cid: str, hours: int = 24, limit: int = 50, offset: int = 0, me=Depends(current_user)):
-    if cid not in CHANNELS:
+    if cid not in store.channels:
         raise HTTPException(404, "no such channel")
     if me["id"] not in store.members(cid):
         raise HTTPException(403, "not a member")
-    rows = [{**m, "author": _person(m["author"]), "channel_name": CHANNELS[cid][0]}
+    rows = [{**m, "author": _person(m["author"]), "channel_name": store.channels[cid][0]}
             for m in store.chat if m["channel"] == cid and m["ts"] >= _since(hours)]
     return _page(rows, min(limit, 100), offset)
 

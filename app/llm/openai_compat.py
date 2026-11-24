@@ -16,10 +16,10 @@ RETRYABLE = {429, 500, 502, 503, 504}
 class OpenAICompatClient(LLMClient):
     provider = "openai_compat"
 
-    def __init__(self, base_url: str, model: str, api_key: str = "", max_retries: int = 4, timeout: float = 60,
+    def __init__(self, base_url: str, model: str, api_key: str = "", max_retries: int = 4, timeout: float = 60, max_tokens: int = 1200,
                  http: httpx.Client | None = None, sleep=time.sleep):
         self.base_url, self.model, self.api_key = base_url.rstrip("/"), model, api_key
-        self.max_retries, self.http, self._sleep = max_retries, http or httpx.Client(timeout=timeout), sleep
+        self.max_retries, self.http, self._sleep, self.max_tokens = max_retries, http or httpx.Client(timeout=timeout), sleep, max_tokens
 
     def _delay(self, attempt: int, r: httpx.Response | None) -> float:
         ra = r.headers.get("retry-after") if r is not None else None
@@ -30,7 +30,7 @@ class OpenAICompatClient(LLMClient):
     def complete(self, system: str, user: str) -> LLMResult:
         t0 = time.perf_counter()
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
-        body = {"model": self.model, "temperature": 0, "max_tokens": 600,
+        body = {"model": self.model, "temperature": 0, "max_tokens": self.max_tokens,
                 "messages": [{"role": "system", "content": system},
                              {"role": "user", "content": f"<document>\n{user}\n</document>"}]}
         for attempt in range(self.max_retries + 1):

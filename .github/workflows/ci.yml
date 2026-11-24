@@ -14,6 +14,9 @@ jobs:
         env: { LLM_PROVIDER: mock }
       - run: python -m eval.briefing_eval --world
         env: { LLM_PROVIDER: mock, MIN_RECALL: "0.8" }
+      # Large generated company (204 employees' inboxes, hard cases, phishing): fails if the rule-based baseline degrades or anything leaks
+      - run: python -m eval.bulk_eval --n 40 --min-recall 0.8 --min-precision 0.8
+        env: { LLM_PROVIDER: mock }
       # Replays real user feedback (todo "not relevant"/done, edited/rejected drafts); fails on regression vs eval/baseline.json
       - run: python -m eval.feedback_eval
         env: { LLM_PROVIDER: mock }

@@ -28,6 +28,7 @@ class Item:
     assignee: str | None = None
     external: bool = False
     reply_to: str | None = None   # user:<id> | ext:<email>; only for mail
+    severity: str | None = None   # issues only: P1..P4
 
 
 class Source(Protocol):

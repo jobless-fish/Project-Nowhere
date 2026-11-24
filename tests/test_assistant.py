@@ -81,3 +81,34 @@ def test_feedback_roundtrip(client):
     assert client.get("/assistant/feedback", params={"user_id": "u_kim"}).json() == {k: "done"}
     assert client.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k, "value": "x"}).status_code == 422
     assert client.get("/assistant/briefing", params={"user_id": "u_park"}).status_code == 404
+
+
+def test_llm_payload_marks_my_issues_and_unassigned_issue_todos_are_dropped(client):
+    u, items = user_items()
+    issues = [i for i in items if i.source == "issue"]
+    mine = next(i for i in issues if i.assignee == u.id)
+    other = next(i for i in issues if i.assignee != u.id)
+    flags = {p["id"]: p["assignee_is_me"] for p in json.loads(br._payload(issues, u))}
+    assert flags[mine.id] is True and flags[other.id] is False
+    out = br.build_briefing(u, items, Fake({"summary": "s", "fyi": [], "todos": [
+        {"title": "남의 이슈", "priority": "high", "source_ids": [other.id]}, {"title": "내 이슈", "priority": "high", "source_ids": [mine.id]}]}))
+    assert [t["title"] for t in out["todos"]] == ["내 이슈"] and out["dropped_unassigned"] == 1
+
+
+def test_news_digest_stays_short_even_in_a_busy_company(client):
+    from world.store import store
+    from fastapi.testclient import TestClient
+    from app.assistant.world_source import WorldSource
+    from world.main import app as wapp
+    store.reset()
+    src = WorldSource(TestClient(wapp))
+    u = next(x for x in src.users() if x.id == "u_dev1")
+    items = src.fetch(u, 48)
+    assert sum(i.source == "chat" for i in items) > 60                      # busy: many chat messages
+    from app.llm.mock import MockClient
+    d = br.build_digest(u, items, Fake({"highlights": []}))
+    raw = br.build_digest(u, items, MockClient())
+    assert 1 <= len(raw["highlights"]) <= 10 and len(raw["sources"]) <= 12 + 8 * 6
+    assert raw["highlights"][0]["category"] in ("notice", "post")           # official news first
+    assert any("새 메시지" in h["title"] for h in raw["highlights"])         # chat is grouped per channel
+    assert d["highlights"] == []                                              # an empty LLM answer is honoured, not padded

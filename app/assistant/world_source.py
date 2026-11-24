@@ -15,7 +15,7 @@ class WorldSource:
         self._tokens: dict[str, tuple[str, float]] = {}
 
     def users(self) -> list[User]:
-        r = self.http.get("/sso/users")
+        r = self.http.get("/sso/users", params={"all": True})   # every employee can use the assistant, not only the demo logins
         r.raise_for_status()
         return [User(u["id"], u["name"], u["role"], u["team"]) for u in r.json()]
 
@@ -54,7 +54,7 @@ class WorldSource:
                               reply_to=(f"user:{m['from']['id']}" if m["from"]["id"] else f"ext:{m['from']['email']}")))
         for i in self._get(user, "/tracker/issues", hours=max(hours, 48))["items"]:
             items.append(Item(f"iss-{i['id']}", "issue", i["title"], i["body"], i["key"], self._hours(i["ts"]),
-                              mine, assignee=i["assignee"]))
+                              mine, assignee=i["assignee"], severity=i.get("severity")))
         for n in self._get(user, "/portal/notices", hours=72)["items"]:
             items.append(Item(f"ntc-{n['id']}", "notice", n["title"], n["body"], "공지", self._hours(n["ts"]), mine))
         for p in self._get(user, "/portal/posts", hours=72)["items"]:

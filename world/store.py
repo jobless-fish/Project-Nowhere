@@ -9,6 +9,7 @@ COMPANY = {"name": "노웨어", "name_en": "Nowhere", "founded": 2019, "hq": "�
 PASSWORD = "demo1234"  # demo only
 
 from .people import build, org_summary  # noqa: E402  (roster lives in people.py)
+from . import traffic  # noqa: E402
 
 CHANNELS = {  # id: (name, private, member selector)
     "c_all": ("전사공지", False, "all"),
@@ -64,6 +65,15 @@ GOLD = {
 NEWSLETTERS = ["주간 핀테크 업계 동향", "이번 주 보험 규제 소식", "사내 도서 신간 안내", "점심 메뉴 투표 결과"]
 
 
+def slot_ts(t0, slot):
+    """(days back, hour, minute) -> ISO timestamp that is never in the future relative to t0."""
+    base = t0.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=slot["day_back"])
+    t = base + timedelta(hours=slot["hour"], minutes=slot["minute"])
+    if t > t0:
+        t -= timedelta(days=1)
+    return t.isoformat(timespec="seconds")
+
+
 class Store:
     def __init__(self):
         self.reset()
@@ -84,21 +94,35 @@ class Store:
                 self.mails.append(dict(id=f"nl{n}", sender=None, external="news@digest.example", to=[uid],
                                        subject=rnd.choice(NEWSLETTERS), body="이번 주 소식을 전해드립니다.",
                                        ts=ts(rnd.randint(2, 40))))
+        g = traffic.generate()
+        for m in g["mails"]:
+            nm, em = m["external"] if m["external"] else (None, None)
+            self.mails.append(dict(id=m["id"], sender=m["sender"], external=em, external_name=nm, to=m["to"], subject=m["subject"], body=m["body"], ts=slot_ts(self.t0, m["slot"])))
         self.mails.sort(key=lambda m: m["ts"], reverse=True)
         self.issues = [dict(id=i[0], key=i[1], title=i[2], body=i[3], team=i[4], assignee=i[5], severity=i[6],
                             escalated=i[7], ts=ts(i[8])) for i in ISSUES]
         self.notices = [dict(id=x[0], title=x[1], body=x[2], audience=x[3], ts=ts(x[4])) for x in NOTICES]
         self.posts = [dict(id=x[0], title=x[1], body=x[2], audience=x[3], ts=ts(x[4])) for x in POSTS]
         self.chat = [dict(id=c[0], channel=c[1], author=c[2], text=c[3], ts=ts(c[4])) for c in CHAT]
+        w = traffic.generate_world()
+        self.issues += [dict(id=i["id"], key=i["key"], title=i["title"], body=i["body"], team=i["team"], assignee=i["assignee"], severity=i["severity"],
+                             escalated=False, ts=slot_ts(self.t0, i["slot"])) for i in w["issues"]]
+        self.notices += [dict(id=n["id"], title=n["title"], body=n["body"], audience=n["audience"], ts=slot_ts(self.t0, n["slot"])) for n in w["notices"]]
+        self.chat += [dict(id=m["id"], channel=m["channel"], author=m["author"], text=m["text"], ts=slot_ts(self.t0, m["slot"])) for m in w["messages"]]
+        self.channels = {**CHANNELS, **w["channels"]}
         self.attendance = {}
 
     def members(self, cid: str) -> set:
         out = set()
-        for part in CHANNELS[cid][2].split(","):
+        for part in self.channels[cid][2].split(","):
             if part == "all":
                 out |= set(self.users)
             elif part.startswith("team:"):
                 out |= {u["id"] for u in self.users.values() if u["team"] == part[5:]}
+            elif part.startswith("dept:"):
+                out |= {u["id"] for u in self.users.values() if u["dept_key"] == part[5:]}
+            elif part.startswith("unit:"):
+                out |= {u["id"] for u in self.users.values() if u["unit"] == part[5:]}
             else:
                 out.add(part)
         return out
