@@ -14,10 +14,13 @@ from pathlib import Path
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-acc", type=float, default=0.0)
+    ap.add_argument("--prompt", default=None, help="prompt version to evaluate (v1|v2)")
     ap.add_argument("--data", default=str(Path(__file__).with_name("dataset.jsonl")))
     args = ap.parse_args()
 
     os.environ.setdefault("DOCFLOW_DB", str(Path(tempfile.mkdtemp()) / "eval.db"))
+    if args.prompt:
+        os.environ["PROMPT_VERSION"] = args.prompt
     from app import config, db, pipeline  # imported after env is set
 
     db.init()

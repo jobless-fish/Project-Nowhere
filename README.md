@@ -36,6 +36,14 @@ python -m eval.run_eval                     # 평가
 ```
 주요 환경변수: `LLM_PROVIDER(auto|claude|mock)`, `CLAUDE_MODEL`, `CONFIDENCE_THRESHOLD`, `PRICE_IN_PER_MTOK/PRICE_OUT_PER_MTOK`, `ERP_URL`(미설정 시 내장 모의 ERP), `DOCFLOW_API_KEY`.
 
+## 무료/로컬 모델로 실행 (OpenAI 호환)
+```bash
+# Ollama (무료, 키 불필요)
+ollama pull qwen2.5:7b
+LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b python -m eval.run_eval --prompt v2
+# Gemini 무료 티어 / Groq / OpenRouter: LLM_BASE_URL, LLM_MODEL, LLM_API_KEY만 바꿉니다.
+```
+
 ## 현재 한계 (솔직하게)
 - 평가 정확도 1.0은 **mock(규칙 기반) 기준**이며 12건의 작은 데이터셋입니다. 실제 Claude 수치는 API 키로 `eval.run_eval`을 돌려 README에 갱신해야 합니다.
 - UI는 정적 HTML 1장입니다(React 미적용). DB는 SQLite, 인증은 단일 API 키 수준입니다.
