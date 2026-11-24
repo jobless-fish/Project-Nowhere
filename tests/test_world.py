@@ -78,13 +78,19 @@ def test_world_injection_and_exec_secrets(world):
 
 def test_signed_webhook(world):
     from app.main import app
-    body = json.dumps({"user_id": "u_dev1"}).encode()
-    good = hmac.new(b"dev-webhook", body, hashlib.sha256).hexdigest()
+    import time
+    sign = lambda b: hmac.new(b"dev-webhook", b, hashlib.sha256).hexdigest()
+    body = json.dumps({"user_id": "u_dev1", "ts": time.time()}).encode()
+    good = sign(body)
     with TestClient(app) as c:
         assert c.post("/assistant/webhook/clock-in", content=body, headers={"X-Signature": "00"}).status_code == 401
         assert c.post("/assistant/webhook/clock-in", content=body).status_code == 401
         r = c.post("/assistant/webhook/clock-in", content=body, headers={"X-Signature": good})
         assert r.status_code == 200 and r.json()["briefing"]["user"]["id"] == "u_dev1"
+        old = json.dumps({"user_id": "u_dev1", "ts": time.time() - 3600}).encode()      # correctly signed but an hour old: a replay
+        assert c.post("/assistant/webhook/clock-in", content=old, headers={"X-Signature": sign(old)}).status_code == 401
+        nots = json.dumps({"user_id": "u_dev1"}).encode()                                # correctly signed, no timestamp
+        assert c.post("/assistant/webhook/clock-in", content=nots, headers={"X-Signature": sign(nots)}).status_code == 400
 
 
 def test_hr_clock_in_notifies_assistant(world, monkeypatch):

@@ -85,5 +85,8 @@ class WorldSource:
         return r.json()
 
     def gold(self, user_id: str) -> set:
-        from world.store import GOLD
-        return set(GOLD.get(user_id, []))
+        from world.store import GOLD, store
+        sig = {f"ntc-{n['id']}" for n in store.notices if n["id"].startswith("sig_") and store.audience_ok(store.users[user_id], n["audience"])} if user_id in store.users else set()
+        if user_id not in GOLD:
+            return set()                                  # only the hand-labelled (featured) users carry gold; everyone else is not scored
+        return set(GOLD[user_id]) | sig       # money/performance signals addressed to a person are, by definition, work they must do

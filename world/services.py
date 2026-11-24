@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import time
 import json
 import logging
 import os
@@ -314,7 +315,7 @@ def notify_assistant(user_id: str):
     url = os.getenv("ASSISTANT_URL")
     if not url:
         return
-    body = json.dumps({"user_id": user_id}).encode()
+    body = json.dumps({"user_id": user_id, "ts": time.time()}).encode()
     sig = hmac.new(os.getenv("ASSISTANT_WEBHOOK_SECRET", "dev-webhook").encode(), body, hashlib.sha256).hexdigest()
     try:
         httpx.post(f"{url.rstrip('/')}/assistant/webhook/clock-in", content=body, timeout=15,

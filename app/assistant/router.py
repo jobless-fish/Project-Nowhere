@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import time
 import json
 import os
 from datetime import datetime
@@ -46,6 +47,9 @@ def clock_in(body: ClockIn):
     return _clock_in(body.user_id)
 
 
+WEBHOOK_MAX_AGE = 300.0   # seconds
+
+
 @public.post("/webhook/clock-in")
 async def clock_in_webhook(request: Request, x_signature: str | None = Header(default=None)):
     """Called by the attendance system. Authenticated by HMAC over the raw body (no user session here)."""
@@ -54,8 +58,15 @@ async def clock_in_webhook(request: Request, x_signature: str | None = Header(de
     good = hmac.new(secret, raw, hashlib.sha256).hexdigest()
     if not x_signature or not hmac.compare_digest(x_signature, good):
         raise HTTPException(401, "bad signature")
+    try:
+        msg = json.loads(raw)
+        uid, ts = msg["user_id"], float(msg["ts"])
+    except (ValueError, KeyError, TypeError):
+        raise HTTPException(400, "body must be JSON with user_id and ts")
+    if abs(time.time() - ts) > WEBHOOK_MAX_AGE:       # a captured signed request cannot be replayed later
+        raise HTTPException(401, "stale request")
     # _clock_in does blocking HTTP (it may call back into this very server): never run it on the event loop
-    return await run_in_threadpool(_clock_in, json.loads(raw)["user_id"])
+    return await run_in_threadpool(_clock_in, uid)
 
 
 def _clock_in(user_id: str):
