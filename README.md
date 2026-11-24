@@ -207,3 +207,8 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - **숨길 수 없는 것**: 마감이 있는 필수 공지, 회사 숫자에서 나온 알림(갱신·예산·실적·재무), 내가 맡은 P1·P2 이슈. 누르면 이유를 알려 줘요.
 - 한 사람의 클릭으로 **모두의 규칙을 바꾸지 않아요**(오클릭·악용 방지). 여러 명이 숨긴 종류는 관리자 콘솔 "학습 데이터"에 검토 후보로 올라오고, 바꿀지는 사람이 정해요.
 - 배포 전 재채점(`python -m eval.feedback_eval`)이 이 동작을 그대로 재현해서, 규칙을 바꿀 때 "숨기면 사라진다 / 숨길 수 없는 것은 남는다"가 지켜지는지 확인해요.
+
+## 점검과 AI 테스트
+- `python check.py --browser` 한 번으로 테스트·빌드·평가·권한 점검·실제 브라우저 흐름까지 13단계를 확인해요 (`--quick`은 40초).
+- Claude나 ChatGPT(Codex)가 내 PC에서 직접 테스트하게 하는 방법과 붙여 넣을 문장은 [`docs/AI_TEST_GUIDE.md`](docs/AI_TEST_GUIDE.md).
+- 지난 점검 결과: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
