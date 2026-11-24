@@ -35,10 +35,10 @@ function Autonomy() {
             <span className="seg" role="img" aria-label={`현재 단계 ${modeName(r.doc_type, r.mode)}`}>{(isReply(r.doc_type) ? ["assisted", "auto"] : MODES).map((m) => <span key={m} className={m === r.mode ? "on" : ""}>{modeName(r.doc_type, m)}</span>)}</span></div>
           {NEED(r.doc_type, r.mode) > 0 && <div><div className="progress" role="progressbar" aria-valuenow={r.samples} aria-valuemax={NEED(r.doc_type, r.mode)}>
             <i style={{ width: `${Math.min(100, (r.samples / NEED(r.doc_type, r.mode)) * 100)}%` }} /></div>
-            <p className="small muted" style={{ marginTop: 4 }}>표본 {r.samples}/{NEED(r.doc_type, r.mode)}건 · {isReply(r.doc_type) ? "초안 그대로 발송" : "일치"} {r.agree}건 · 신뢰구간 하한 {r.lower_bound}</p></div>}
+            <p className="small muted" style={{ marginTop: 4 }}>표본 {Math.min(r.samples, NEED(r.doc_type, r.mode))}/{NEED(r.doc_type, r.mode)}건{r.samples >= NEED(r.doc_type, r.mode) ? ` 충족(총 ${r.samples}건)` : ""} · {isReply(r.doc_type) ? "초안 그대로 발송" : "일치"} {r.agree}건 · 신뢰구간 하한 {r.lower_bound}</p></div>}
           {isReply(r.doc_type) && <p className="small muted">미리 작성 단계가 되면 출근할 때 사내 수신자 초안을 먼저 만들어 둬요. 발송은 항상 사람이 눌러요. 외부 수신자는 승격 대상이 아니에요.</p>}
           {r.mode === "auto" && <p className="small muted">자동 단계 · 최근 결과 신뢰구간 하한 {r.lower_bound}{r.applied && " · 자동 강등됨"}</p>}
-          <div className="row"><span className="small muted grow">{REASON(r.reason)}</span>
+          <div className="row"><span className="small muted grow">{r.mode === "auto" && r.reason.startsWith("collecting") ? "최근 결과가 기준 이상이라 자동 단계를 유지해요" : REASON(r.reason)}</span>
             {r.recommended_mode !== r.mode && <button className="btn primary sm" onClick={() => promote(r)}>{modeName(r.doc_type, r.recommended_mode)}{ro(modeName(r.doc_type, r.recommended_mode))} 승격 승인</button>}</div>
         </div></Card>))}
     </div>

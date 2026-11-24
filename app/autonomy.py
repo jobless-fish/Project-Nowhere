@@ -83,7 +83,7 @@ def status(doc_type: str) -> dict:
     elif mode == "auto":
         recent = rows[:20]
         rn, ra = len(recent), sum(r["agree"] for r in recent)
-        if rn >= 10 and wilson_lower(ra, rn) < demote_lb:
+        if rn >= 10 and ra / rn < demote_lb:   # the recent hit rate itself is below the bar (a *lower* confidence bound would demote even a perfect 20/20 window: 0.84)
             rec, why = "assisted", f"recent agreement {ra}/{rn} too low"
     return {"doc_type": doc_type, "mode": mode, "samples": n, "agree": a,
             "agreement_rate": round(a / n, 3) if n else None, "lower_bound": round(lb, 3),

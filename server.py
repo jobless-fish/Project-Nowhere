@@ -25,7 +25,8 @@ os.environ.setdefault("LLM_PROVIDER", "mock")      # no key, no cost; set LLM_PR
 os.environ.setdefault("DEFAULT_MODE", "auto")
 # Data file: portable default (the OS temp dir; there is no /tmp on Windows). With no DOCFLOW_DB set this is a throw-away DEMO,
 # so it starts empty every time. If you set DOCFLOW_DB yourself, that file is never touched or deleted.
-if "DOCFLOW_DB" not in os.environ:
+_IS_DEMO_DB = "DOCFLOW_DB" not in os.environ          # a throw-away demo database may be filled with operating history; a user-supplied one never is
+if _IS_DEMO_DB:
     _demo_db = Path(tempfile.gettempdir()) / "nowhere-demo.db"
     for _f in (_demo_db, Path(f"{_demo_db}-wal"), Path(f"{_demo_db}-shm")):
         _f.unlink(missing_ok=True)
@@ -54,6 +55,9 @@ DIST = Path(__file__).parent / "web" / "dist"
 @asynccontextmanager
 async def lifespan(_):
     db.init()          # mounted sub-apps do not run their own lifespan
+    if _IS_DEMO_DB and os.getenv("SEED_HISTORY", "1") != "0":
+        from app import seed_history
+        seed_history.seed()
     yield
 
 
