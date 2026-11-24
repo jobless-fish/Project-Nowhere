@@ -39,7 +39,7 @@ export default function App() {
         <div className="brand"><span className="mark">n</span>Nowhere</div>
         <nav className="nav" aria-label="주 메뉴">
           {NAV.map((n) => link(n.id, n.label, n.icon))}
-          <div className="sep" /><span className="label small" style={{ color: "#6f7f9c", padding: "0 12px" }}>관리</span>
+          <div className="sep" /><span className="label small" style={{ color: "#8a9ab6", padding: "0 12px" }}>관리</span>
           {link("admin", "관리자 콘솔", "admin")}
         </nav>
         <div className="me">

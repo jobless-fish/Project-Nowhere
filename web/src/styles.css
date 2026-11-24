@@ -1,9 +1,9 @@
 /* ---------- Design tokens (Nowhere) ---------- */
 :root {
   --bg: #f5f6f8; --surface: #ffffff; --surface-2: #eef1f5; --border: #e1e5eb;
-  --text: #0f1b2d; --text-2: #52607a; --text-3: #8592a8;
+  --text: #0f1b2d; --text-2: #52607a; --text-3: #5e6b82;
   --accent: #0e7c7b; --accent-strong: #0a5f5e; --accent-soft: #dff3f1; --on-accent: #ffffff;
-  --danger: #c0392b; --danger-soft: #fbe9e6; --warn: #b7791f; --warn-soft: #fdf3dc; --ok: #1f8a4c; --ok-soft: #e1f4e8;
+  --danger: #c0392b; --danger-soft: #fbe9e6; --warn: #8a5a0a; --warn-soft: #fdf3dc; --ok: #17703c; --ok-soft: #e1f4e8;
   --ink: #0f1b2d; --on-ink: #e8edf5;
   --radius: 12px; --radius-sm: 8px; --shadow: 0 1px 2px rgba(15,27,45,.06), 0 4px 16px rgba(15,27,45,.05);
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
@@ -12,7 +12,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0b1220; --surface: #121b2d; --surface-2: #1a2540; --border: #263454;
-    --text: #e8edf5; --text-2: #a3b0c6; --text-3: #70809d;
+    --text: #e8edf5; --text-2: #a3b0c6; --text-3: #8b9ab5;
     --accent: #3cc4bf; --accent-strong: #6fd9d5; --accent-soft: #123b3d; --on-accent: #062524;
     --danger: #ff8a7a; --danger-soft: #3a1b1a; --warn: #f0b95a; --warn-soft: #3a2d12; --ok: #5dd391; --ok-soft: #12301f;
     --ink: #070d19; --on-ink: #e8edf5; --shadow: 0 1px 2px rgba(0,0,0,.4);
