@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DocFlow</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#666;--bd:#ddd;--ac:#2563eb;--ok:#15803d;--warn:#b45309;--bad:#b91c1c}
+@media(prefers-color-scheme:dark){:root{--bg:#111;--fg:#eee;--mut:#999;--bd:#333;--ac:#60a5fa;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}}
+body{font:15px system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0;padding:16px;max-width:1000px;margin:auto}
+h1{font-size:20px}textarea{width:100%;box-sizing:border-box;height:90px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:8px}
+button{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;margin-top:6px}button.g{background:transparent;color:var(--fg);border:1px solid var(--bd)}
+.m{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.m div{border:1px solid var(--bd);border-radius:8px;padding:8px 12px;min-width:110px}.m b{display:block;font-size:18px}.m span{color:var(--mut);font-size:12px}
+.c{border:1px solid var(--bd);border-radius:8px;padding:10px;margin:8px 0}.t{font-size:12px;font-weight:600}
+.processed,.approved{color:var(--ok)}.needs_review{color:var(--warn)}.failed,.rejected{color:var(--bad)}
+pre{white-space:pre-wrap;margin:4px 0;color:var(--mut);font-size:12px}
+</style></head><body>
+<h1>DocFlow — 업무 문서 자동 처리</h1>
+<textarea id="t" placeholder="메일/문서 내용을 붙여 넣으세요. 예) 박서연입니다. 출장비 정산 요청합니다. 총 85만원"></textarea>
+<button onclick="send()">제출</button> <button class="g" onclick="load()">새로고침</button>
+<div class="m" id="m"></div>
+<h2 style="font-size:16px">처리 목록</h2><div id="l"></div>
+<script>
+const key=new URLSearchParams(location.search).get('key');
+const H=()=>({'Content-Type':'application/json',...(key?{'X-API-Key':key}:{})});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(p,o={}){const r=await fetch(p,{headers:H(),...o});if(!r.ok)throw new Error(await r.text());return r.json()}
+async function send(){const text=t.value.trim();if(!text)return;await api('/documents',{method:'POST',body:JSON.stringify({text,source:'ui'})});t.value='';load()}
+async function rv(id,approve){await api(`/documents/${id}/review`,{method:'POST',body:JSON.stringify({approve,reviewer:'ui-user'})});load()}
+async function load(){
+ const m=await api('/metrics');
+ document.getElementById('m').innerHTML=[['자동처리율',(m.auto_processed_rate*100).toFixed(0)+'%'],['LLM 호출',m.llm_calls],['성공률',(m.llm_success_rate*100).toFixed(0)+'%'],['평균 지연',m.avg_latency_ms+'ms'],['누적 비용','$'+m.total_cost_usd],['프롬프트',m.prompt_version]].map(([a,b])=>`<div><b>${esc(b)}</b><span>${a}</span></div>`).join('');
+ const d=await api('/documents');
+ document.getElementById('l').innerHTML=d.map(x=>{const e=x.extraction||{};
+  return `<div class="c"><span class="t ${x.status}">#${x.id} ${x.status}</span> ${esc(e.doc_type||'')} ${e.confidence!=null?'('+e.confidence+')':''} ${esc(x.erp_ref||'')}
+  <pre>${esc(x.text.slice(0,200))}</pre><pre>${esc(JSON.stringify(e))}</pre>
+  ${x.status==='needs_review'?`<button onclick="rv(${x.id},true)">승인</button> <button class="g" onclick="rv(${x.id},false)">반려</button> <small>${esc(x.audit.at(-1).reason||'')}</small>`:''}</div>`}).join('')}
+load();
+</script></body></html>

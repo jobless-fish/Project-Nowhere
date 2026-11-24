@@ -1,0 +1,10 @@
+services:
+  docflow:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DOCFLOW_API_KEY=${DOCFLOW_API_KEY:-}
+    volumes: ["docflow-data:/data"]
+volumes:
+  docflow-data:
