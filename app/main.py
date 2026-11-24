@@ -17,7 +17,7 @@ async def lifespan(_):
     yield
 
 
-app = FastAPI(title="DocFlow", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Project Nowhere", version="0.2.0", lifespan=lifespan)
 
 
 def auth(x_api_key: str | None = Header(default=None)):
