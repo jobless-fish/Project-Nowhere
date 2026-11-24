@@ -23,7 +23,10 @@ const B = (process.env.BASE_URL || 'http://127.0.0.1:8888/').replace(/\/?$/, '/'
       if (theme === 'dark') await p.click('.theme-toggle');
       const row = { user: nm, theme, pages: {} };
       for (const r of ROUTES) {
-        await p.goto(B + '#/' + r); await p.waitForTimeout(700);
+        await p.goto(B + '#/' + r);
+        // wait for the page to finish loading (a loading page shows only its title, e.g. 1 character), then give it a moment to settle
+        await p.waitForFunction(() => (document.querySelector('.main')?.innerText || '').trim().length > 40, null, { timeout: 20000 }).catch(() => {});
+        await p.waitForTimeout(300);
         const txt = (await p.locator('.main').innerText()).replace(/\s+/g, ' ');
         const over = await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
         row.pages[r] = { len: txt.length, over, empty: txt.length < 40 };

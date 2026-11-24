@@ -165,7 +165,8 @@ def stage_live(browser: bool, built: bool):
         h = json.load(urllib.request.urlopen(srv.base + "/api/health"))
         record("live server", "PASS" if h.get("webhook_configured") else "FAIL", f"started on :{srv.port}, webhook secret auto-generated: {h.get('webhook_configured')}")
         code, out, secs = sh([sys.executable, "scripts/probes.py", srv.base])
-        record("permission probes", "PASS" if code == 0 else "FAIL", last(out, r"(\d+/\d+ probes as expected)") + ("" if code == 0 else "\n" + "\n".join(l for l in out.splitlines() if l.startswith("FAIL"))), secs)
+        lat = " | ".join(l.replace("briefing latency ", "") for l in out.splitlines() if l.startswith("briefing latency"))
+        record("permission probes", "PASS" if code == 0 else "FAIL", last(out, r"(\d+/\d+ probes as expected)") + (f"  [briefing: {lat}]" if lat else "") + ("" if code == 0 else "\n" + "\n".join(l for l in out.splitlines() if l.startswith("FAIL"))), secs)
         if not browser:
             record("browser sweep", "SKIP", "add --browser to run (needs Playwright browsers)")
             record("browser work flows", "SKIP", "add --browser to run")
@@ -182,7 +183,11 @@ def stage_live(browser: bool, built: bool):
             code, out, secs = sh([node, script], cwd=WEB, env={"BASE_URL": srv.base + "/"}, timeout=900)
             line = last(out, r"(runs: \d+ \| runs with problems: \d+)") or last(out, r"(\d+/\d+ flow checks passed)") or last(out, r"(titles seen over time: .+)") or out[-250:]
             fails = [l for l in out.splitlines() if l.startswith(("FAIL", " !", "final title"))]
-            record(name, "PASS" if code == 0 else "FAIL", line + ("\n" + "\n".join(fails[:6]) if fails else ""), secs)
+            tail = ""
+            if code != 0:      # the server's own log usually says why (errors, slow calls)
+                srv.log.flush()
+                tail = "\n--- server log (last 20 lines) ---\n" + "\n".join((Path(srv.tmp) / "server.log").read_text(encoding="utf-8", errors="replace").splitlines()[-20:])
+            record(name, "PASS" if code == 0 else "FAIL", line + ("\n" + "\n".join(fails[:6]) if fails else "") + tail, secs, keep=2500)
     finally:
         srv.__exit__()
 

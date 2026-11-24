@@ -190,3 +190,17 @@ def test_executive_may_update_an_escalated_issue_but_not_others(w):
     other = next(i for i in store.issues if not i["escalated"] and i["assignee"] != "u_cto")
     assert c.patch(f"/tracker/issues/{esc['id']}", json={"status": "진행 중"}, headers=tok("u_cto")).status_code == 200
     assert c.patch(f"/tracker/issues/{other['id']}", json={"status": "진행 중"}, headers=tok("u_cto")).status_code == 403
+
+
+def test_a_reply_delivered_in_the_same_second_as_mark_seen_still_counts_as_new(w):
+    """Regression: unread compares timestamps; with whole-second resolution a reply that arrives right after the page marked the inbox as seen was lost."""
+    c, tok, clock = w
+    c.post("/mail/send", json={"to": ["u_slead"], "subject": "일정 확인 부탁", "body": "다음 주 일정 확인 부탁드립니다."}, headers=tok("u_kim"))
+    assert store.pending
+    base = int(clock[0]) + 100
+    store.pending[0]["due"] = base + 0.5                       # due half way through a second
+    clock[0] = base + 0.45
+    assert c.post("/mail/seen", headers=tok("u_kim")).status_code == 200      # the page has just looked: same second as the delivery below
+    clock[0] = base + 0.55
+    u = c.get("/mail/unread", headers=tok("u_kim")).json()
+    assert u["count"] == 1 and u["latest"]["subject"].startswith("Re:")

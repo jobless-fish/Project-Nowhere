@@ -43,6 +43,11 @@ chk("guide rate limit kicks in (429 after 20/min)", 429 in codes, True)
 # SQL-ish / odd input
 chk("odd user id -> 404/422 not 500", c.get("/api/assistant/briefing",params={"user_id":"x' OR 1=1 --"}).status_code in (404,422), True)
 chk("nonexistent company year -> 404", c.get("/world/company/years/1999",headers=dev).status_code, 404)
+# latency: a first briefing is built from ~30 internal HTTP calls; on a healthy machine it is well under a second
+for uid in ("u_cto", "u_slead"):          # NOT the accounts the browser flows clock in with: a probe must not change what the flows start from
+    t0 = time.perf_counter(); r = c.post("/api/assistant/clock-in", json={"user_id": uid}); dt = time.perf_counter() - t0
+    print(f"briefing latency {uid}: {dt:.2f}s (status {r.status_code})")
+    chk(f"briefing for {uid} builds in < 20s", r.status_code == 200 and dt < 20, True)
 bad=[r for r in R if not r[1]]
 print(f"{len(R)-len(bad)}/{len(R)} probes as expected")
 for n,ok,got,want in R: print(("OK  " if ok else "FAIL"), n, "" if ok else f"(got {got}, want {want})")

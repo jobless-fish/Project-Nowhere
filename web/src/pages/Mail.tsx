@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { errText, world } from "../api";
 import type { Mail, Session } from "../types";
 import { Badge, Card, Empty, PageHead, Skeletons, ago } from "../ui";
@@ -46,13 +46,16 @@ export default function MailPage({ s }: { s: Session }) {
   const [sel, setSel] = useState<Mail | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [err, setErr] = useState(false);
+  const latest = useRef(0);       // only the newest request may draw: an older inbox response arriving after the sent-folder one would show the wrong folder
   const load = useCallback(async (keep?: string) => {
+    const mine = ++latest.current;
     try {
       const r = await world.get<{ items: Mail[] }>(`/mail/${box === "in" ? "inbox" : "sent"}?hours=72&limit=100`, s);
+      if (mine !== latest.current) return;
       setMails(r.items); setErr(false);
       setSel((cur) => r.items.find((m) => m.id === (keep ?? cur?.id)) ?? r.items[0] ?? null);
       if (box === "in") void world.post("/mail/seen", {}, s).catch(() => {});
-    } catch { setErr(true); }
+    } catch { if (mine === latest.current) setErr(true); }
   }, [s, box]);
   useEffect(() => { setMails(null); void load(); }, [load]);
   useEffect(() => { if (box === "in" && live.mail > 0) void load(); }, [live.mail, box, load]);
@@ -67,7 +70,7 @@ export default function MailPage({ s }: { s: Session }) {
     to: m.from.id ? { people: [{ id: m.from.id, name: m.from.name }], external: [] } : { people: [], external: m.external ? [m.from.email] : [] },
     subject: m.subject.startsWith("Re:") ? m.subject : `Re: ${m.subject}`,
     body: `\n\n— ${m.from.name}님 메일 중 —\n${m.body.split("\n").map((l) => `> ${l}`).join("\n")}` });
-  const sent = () => { setDraft(null); setBox("sent"); live.toast({ kind: "ok", text: "보냈어요. 답장은 잠시 뒤 받은편지함에 도착해요." }); live.poke(); void load(); };
+  const sent = () => { setDraft(null); if (box !== "sent") setBox("sent"); live.toast({ kind: "ok", text: "보냈어요. 답장은 잠시 뒤 받은편지함에 도착해요." }); live.poke(); if (box === "sent") void load(); };
   const peopleOf = (m: Mail) => [...m.to_people.map((p) => p.name), ...m.to_external].join(", ");
 
   return (

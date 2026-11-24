@@ -35,7 +35,7 @@ python check.py --browser
 | eval: feedback replay | `todo_pass_rate: 1.0` |
 | eval: colleague replies | `valid 20/20` |
 | live server | 무작위 웹훅 키 자동 생성 `True` |
-| permission probes | `22/22 probes as expected` |
+| permission probes | `24/24 probes as expected` |
 | browser sweep | `runs: 16 | runs with problems: 0` |
 | browser work flows | `19/19 flow checks passed` |
 | browser slow-network DM | `titles seen over time: ["박준영"]` (대화가 열리기 전에 다른 채널이 깜빡이지 않음) |

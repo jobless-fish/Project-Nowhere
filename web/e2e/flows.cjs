@@ -5,13 +5,20 @@ const B = (process.env.BASE_URL || 'http://127.0.0.1:8888/').replace(/\/?$/, '/'
 // Poll instead of sleeping: a slow PC (or a busy model) must not turn a correct result into a failure. Every wait has a ceiling.
 const until = (p, fn, arg, ms = 12000) => p.waitForFunction(fn, arg, { timeout: ms }).then(() => true).catch(() => false);
 const has = (p, sel, re, ms = 12000) => until(p, ([q, r]) => new RegExp(r).test(document.querySelector(q)?.innerText || ''), [sel, re.source], ms);
+// A briefing that does not appear must produce a readable failure (what the page said, how long we waited), not a stack trace.
+const ready = async (p, who, ms = 60000) => {
+  const t0 = Date.now();
+  const ok = await p.waitForSelector('.todo', { timeout: ms }).then(() => true).catch(() => false);
+  if (!ok) t(`${who}: briefing appears within ${ms / 1000}s`, false, 'page said: ' + (await p.locator('.main').innerText().catch(() => '(no page)')).replace(/\s+/g, ' ').slice(0, 220));
+  return ok ? Date.now() - t0 : 0;
+};
 const t = (n, ok, ev = '') => { out.push([ok, n, ev]); console.log((ok ? 'PASS ' : 'FAIL ') + n + (ev ? '  — ' + ev : '')); };
 const login = async (b, name) => { const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage(); p.errs = [];
   p.on('pageerror', e => p.errs.push(String(e).slice(0, 100))); await p.goto(B); await p.waitForSelector('.user-pick'); await p.click(`.user-pick:has-text("${name}")`); await p.waitForSelector('.nav'); return p; };
 (async () => { const b = await chromium.launch();
   // ---- 1) developer: clock in, todo flows, mail, chat
   let p = await login(b, '이서연'); let t0 = Date.now();
-  await p.click('[data-guide=clock-in]'); await p.waitForSelector('.todo', { timeout: 25000 }); t('clock-in -> briefing appears', true, `${Date.now() - t0}ms`);
+  await p.click('[data-guide=clock-in]'); const ms1 = await ready(p, 'developer'); if (!ms1) return finish(b); t('clock-in -> briefing appears', true, `${Date.now() - t0}ms`);
   const n0 = await p.locator('.todo').count();
   const notice = p.locator('.todo:has-text("확인했어요") button:has-text("확인했어요")').first();
   if (await notice.count()) { await notice.click(); await p.waitForSelector('[data-guide=done]'); t('notice ack moves to 처리한 일', /확인 완료/.test(await p.locator('[data-guide=done]').innerText())); }
@@ -27,7 +34,7 @@ const login = async (b, name) => { const p = await (await b.newContext({ viewpor
   // mail compose + <=3 replies
   await p.click('.nav a[href="#/mail"]'); await p.click('[data-guide=mail-new]'); await p.fill('.picker input', '배'); await p.waitForSelector('.picker-list li button'); await p.keyboard.press('Enter');
   await p.fill('#m-sub', '릴리스 체크리스트 확인 부탁'); await p.fill('#m-body', '금요일 릴리스 전에 체크리스트 확인 부탁드립니다.'); await p.click('button:has-text("보내기")'); await p.waitForTimeout(500);
-  await p.click('button[role=tab]:has-text("보낸편지함")'); t('sent mail appears in 보낸편지함', /릴리스 체크리스트/.test(await p.locator('.list').innerText()));
+  await p.click('button[role=tab]:has-text("보낸편지함")'); t('sent mail appears in 보낸편지함', await has(p, '.list', /릴리스 체크리스트/));
   await p.click('button[role=tab]:has-text("받은편지함")');
   await until(p, () => [...document.querySelectorAll('.list button')].some((x) => x.innerText.includes('Re: 릴리스')), null, 30000); await p.waitForTimeout(4000);   // first reply, then a moment for any others (the cap is checked below)
   const replies = await p.locator('.list button:has-text("Re: 릴리스")').count(); t('mail reply arrives (<=3)', replies >= 1 && replies <= 3, `${replies} reply`);
@@ -48,7 +55,7 @@ const login = async (b, name) => { const p = await (await b.newContext({ viewpor
   t('ghost answers a policy question from the wiki', await has(p, '.gchat', /3만원/, 15000), '');
   t('no page errors (developer)', p.errs.length === 0, p.errs.join(';'));
   // ---- 2) CFO: signals + finance + admin
-  p = await login(b, '정유라'); await p.click('[data-guide=clock-in]'); await p.waitForSelector('.todo', { timeout: 25000 });
+  p = await login(b, '정유라'); t0 = Date.now(); await p.click('[data-guide=clock-in]'); if (!(await ready(p, 'CFO'))) return finish(b); t('CFO clock-in -> briefing appears', true, `${Date.now() - t0}ms`);
   const titles = await p.locator('.todo .title').allTextContents();
   t('CFO sees [재무]/[예산]/[실적] signals as todos', ['[재무]', '[예산]', '[실적]'].every(k => titles.some(x => x.startsWith(k))), titles.filter(x => x.startsWith('[')).length + ' signals');
   const sig = p.locator('.todo:has-text("[예산]") button:has-text("확인했어요")').first(); await sig.click();
@@ -59,4 +66,5 @@ const login = async (b, name) => { const p = await (await b.newContext({ viewpor
   // ---- 3) developer cannot see finance
   p = await login(b, '김민수'); await p.click('.nav a[href="#/company"]'); await p.click('button[role=tab]:has-text("재무·실적")');
   t('non-finance user sees a permission note, no numbers', (await has(p, '.main', /권한이 없어요/)) && !(await p.locator('.pl').count()));
-  const bad = out.filter(o => !o[0]); console.log(`\n${out.length - bad.length}/${out.length} flow checks passed`); await b.close(); process.exit(bad.length ? 1 : 0); })();
+  return finish(b); })();
+async function finish(b) { const bad = out.filter(o => !o[0]); console.log(`\n${out.length - bad.length}/${out.length} flow checks passed`); await b.close(); process.exit(bad.length ? 1 : 0); }

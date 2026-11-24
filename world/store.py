@@ -128,7 +128,9 @@ class Store:
         return f"{prefix}{self.seq}"
 
     def now_iso(self) -> str:
-        return datetime.fromtimestamp(self.now()).isoformat(timespec="seconds")
+        # milliseconds, not seconds: "unread" is `ts > seen`, and a reply delivered in the same SECOND as the moment the page marked the mailbox
+        # as seen would compare equal and silently never count as new (found by an intermittent browser check)
+        return datetime.fromtimestamp(self.now()).isoformat(timespec="milliseconds")
 
     def dm(self, a: str, b: str) -> str:
         cid = "dm_" + "_".join(sorted([a, b]))

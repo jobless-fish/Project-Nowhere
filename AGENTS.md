@@ -5,7 +5,7 @@ Fictional company "Nowhere" (노웨어). Everything in this repo is fictional; k
 ## Commands
 - **Check everything: `python check.py --browser`** (tests, type check, build, evaluations, live server probes, real-browser sweep and work flows; 14 stages, all must PASS).
   `--quick` = tests + type check. Details and the AI-tester prompt: `docs/AI_TEST_GUIDE.md`. Last known baseline: 157 tests, doc accuracy 0.948,
-  briefing recall 1.00 / precision 0.93, feedback replay 1.0, 22/22 probes, 16 sweep runs clean, 19/19 flows, slow-network DM clean.
+  briefing recall 1.00 / precision 0.93, feedback replay 1.0, 24/24 probes, 16 sweep runs clean, 19/19 flows, slow-network DM clean.
 - Run the app: `python launch.py` (own window) or `python -m uvicorn server:combined --port 8888` then open http://localhost:8888. One command to update and start on Windows: `start.bat`.
 - Web only: `cd web && npx tsc --noEmit` (must pass) · `npm run build` · dev: `./run_demo.sh` + `cd web && npm run dev`.
 - Real-model evaluation (needs a key in env vars, never in files): `python -m eval.repeat npc|briefing|docs -n 3`.

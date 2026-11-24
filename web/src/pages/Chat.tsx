@@ -26,8 +26,14 @@ export default function Chat({ s }: { s: Session }) {
     setCur((x) => x ?? (wantDm.current ? null : (all.find((k) => !k.dm && k.name.includes("팀")) ?? all[0])?.id ?? null));
   }).catch(() => setChs([])), [s]);
   useEffect(() => { void loadChannels(); }, [loadChannels, live.chat]);
+  const curRef = useRef<string | null>(null);
+  useEffect(() => { curRef.current = cur; }, [cur]);
   const loadMsgs = useCallback(async (id: string) => {
-    try { const r = await world.get<{ items: ChatMsg[]; typing: boolean }>(`/chat/channels/${id}/messages?hours=168&limit=80&latest=true`, s); setMsgs(r.items); setTyping(r.typing); } catch { setMsgs([]); }
+    try {
+      const r = await world.get<{ items: ChatMsg[]; typing: boolean }>(`/chat/channels/${id}/messages?hours=168&limit=80&latest=true`, s);
+      if (curRef.current !== id) return;           // the person already switched conversation: a late answer for the old one must not be drawn
+      setMsgs(r.items); setTyping(r.typing);
+    } catch { if (curRef.current === id) setMsgs([]); }
   }, [s]);
   useEffect(() => { if (cur) { setMsgs(null); stick.current = true; void loadMsgs(cur); } }, [cur, loadMsgs]);
   // while a colleague is typing, or something new arrived, refresh the open conversation
