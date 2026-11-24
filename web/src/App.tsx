@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import MailPage from "./pages/Mail";
 import News from "./pages/News";
 import Org from "./pages/Org";
+import Guide from "./guide/Guide";
 
 const NAV = [
   { id: "home", label: "홈", icon: "home" }, { id: "news", label: "소식", icon: "news" },
@@ -33,7 +34,7 @@ export default function App() {
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
     chat: <Chat s={session} />, org: <Org s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
   const link = (id: string, label: string, icon: Parameters<typeof Icon>[0]["n"]) => (
-    <a key={id} href={`#/${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}</a>
+    <a key={id} href={`#/${id}`} data-guide={`nav-${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}</a>
   );
   return (
     <div className="shell">
@@ -52,6 +53,7 @@ export default function App() {
         </div>
       </aside>
       <main className="main">{page}</main>
+      <Guide session={session} />
     </div>
   );
 }

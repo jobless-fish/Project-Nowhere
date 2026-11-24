@@ -22,6 +22,7 @@ export default function Home({ s }: { s: Session }) {
       const list = await api.get<Action[]>(`/assistant/actions?user_id=${uid}`).catch(() => [] as Action[]);
       setActs(Object.fromEntries([...list].reverse().map((a) => [a.todo_key, a])));
       setState("idle");
+      window.dispatchEvent(new Event("guide:briefing-ready"));
     } catch (e) { if (e instanceof ApiError && e.status === 404) { setB(null); setState("idle"); } else setState("error"); }
   }, [uid]);
   useEffect(() => { setState("loading"); load(); }, [load]);
@@ -55,7 +56,7 @@ export default function Home({ s }: { s: Session }) {
       <div className="hero">
         <h1>{greet()}, {s.user.name}님</h1>
         <p>출근을 기록하면 비서가 밤새 도착한 메일과 이슈를 읽고, 오늘 할 일을 정리해 드려요.</p>
-        <button className="btn primary" onClick={clockIn} disabled={state === "working"} aria-busy={state === "working" || undefined}>
+        <button className="btn primary" data-guide="clock-in" onClick={clockIn} disabled={state === "working"} aria-busy={state === "working" || undefined}>
           <Icon n="clock" />출근하기</button>
         {state === "error" && <p role="alert" style={{ color: "#ffb4a8" }}>연결에 문제가 있습니다. 잠시 후 다시 시도해 주세요.</p>}
       </div>
@@ -66,8 +67,9 @@ export default function Home({ s }: { s: Session }) {
   const urgent = open.filter((t) => t.priority === "high");
   const normal = open.filter((t) => t.priority !== "high");
   const closed = b.todos.filter((t) => !open.includes(t));
+  const firstKey = (urgent[0] ?? normal[0])?.key;
   const row = (t: Todo) => (
-    <Card key={t.key} kind={t.priority === "high" ? "urgent" : "accent"}>
+    <Card key={t.key} kind={t.priority === "high" ? "urgent" : "accent"} guide={t.key === firstKey ? "first-todo" : undefined}>
       <div className={`todo ${fb[t.key] === "done" ? "done" : ""}`}>
         <Check on={fb[t.key] === "done"} label={`${t.title} 완료`} onChange={() => mark(t, "done")} />
         <div className="grow stack" style={{ gap: 6 }}>
@@ -87,15 +89,15 @@ export default function Home({ s }: { s: Session }) {
 
   return (
     <>
-      <PageHead title={`${greet()}, ${s.user.name}님`} sub={b.summary} />
+      <PageHead title={`${greet()}, ${s.user.name}님`} sub={b.summary} guide="briefing-summary" />
       <div className="stack" style={{ gap: 20 }}>
         {b.degraded && <div className="banner" role="status"><Icon n="warn" />AI 연결 문제로 규칙 기반으로 정리했습니다. 내용이 단순할 수 있습니다.</div>}
-        {b.flagged.length > 0 && <div className="banner" role="alert"><Icon n="warn" /><div><b>보안 확인이 필요한 메시지 {b.flagged.length}건</b>
+        {b.flagged.length > 0 && <div className="banner" role="alert" data-guide="flagged"><Icon n="warn" /><div><b>보안 확인이 필요한 메시지 {b.flagged.length}건</b>
           {b.flagged.map((f) => <div key={f.id} className="small">{f.title} — {f.reason}</div>)}</div></div>}
-        {urgent.length > 0 && <section><h2>지금 처리하세요</h2><div className="stack">{urgent.map(row)}</div></section>}
-        {normal.length > 0 && <section><h2>오늘 안에</h2><div className="stack">{normal.map(row)}</div></section>}
+        {urgent.length > 0 && <section data-guide="urgent"><h2>지금 처리하세요</h2><div className="stack">{urgent.map(row)}</div></section>}
+        {normal.length > 0 && <section data-guide="later"><h2>오늘 안에</h2><div className="stack">{normal.map(row)}</div></section>}
         {open.length === 0 && <Card><p className="muted">남은 할일이 없습니다. 좋은 하루 보내세요.</p></Card>}
-        {b.fyi.length > 0 && <section><h2>참고만 하세요</h2><Card kind="flat"><div className="stack">
+        {b.fyi.length > 0 && <section data-guide="fyi"><h2>참고만 하세요</h2><Card kind="flat"><div className="stack">
           {b.fyi.map((f) => <div key={f.title} className="row wrap"><span className="grow">{f.title}</span>{f.source_ids.map((id) => <SourceChip key={id} id={id} sources={b.sources} />)}</div>)}</div></Card></section>}
         {closed.length > 0 && <p className="small faint">처리했거나 제외한 항목 {closed.length}건 — 제외한 항목은 비서 개선에 사용됩니다.</p>}
       </div>

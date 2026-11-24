@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from .. import db
 from ..llm import get_client
 from .. import autonomy
-from . import actions, flywheel
+from . import actions, flywheel, guide
 from .briefing import build_briefing, build_digest
 from .sources import get_source
 
@@ -193,3 +193,28 @@ def eval_summary():
 @router.get("/eval/export")
 def eval_export():
     return flywheel.export()
+
+
+class ChatIn(BaseModel):
+    user_id: str
+    message: str
+    route: str = "home"
+    targets: list[str] = []
+    history: list[dict] = []
+
+
+@router.post("/guide/chat")
+def guide_chat(b: ChatIn):
+    _user(b.user_id)
+    if not b.message.strip() or len(b.message) > 500:
+        raise HTTPException(422, "message must be 1-500 characters")
+    if not guide.rate_ok(b.user_id):
+        raise HTTPException(429, "잠깐만요, 너무 빨라요. 조금 뒤에 다시 물어봐 주세요.")
+    hist = [{"role": "user" if h.get("role") == "user" else "bot", "text": str(h.get("text", ""))} for h in b.history[-6:] if isinstance(h, dict)]
+    return guide.answer(b.message.strip(), b.route, {t for t in b.targets if t in guide.ALL_TARGETS}, hist, b.user_id, get_client())
+
+
+@router.get("/guide/tour")
+def guide_tour(user_id: str):
+    _user(user_id)
+    return {"steps": guide.tour(user_id)}

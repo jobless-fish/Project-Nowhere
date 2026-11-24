@@ -124,3 +124,32 @@ input[type="checkbox"] { width: 20px; min-height: 20px; accent-color: var(--acce
   transition: background-color var(--t-hover) var(--ease), transform var(--t-press) var(--ease); }
 .user-pick:hover { background: var(--accent-soft); border-color: var(--accent); } .user-pick:active { transform: translateY(1px) scale(.992); }
 .sheet { display: grid; grid-template-columns: 130px repeat(6, minmax(0, 1fr)); gap: 10px 8px; align-items: center; } .sheet .hd { font: 500 12px var(--mono); color: var(--text-3); } .sheet .cell { padding: 8px 0; }
+
+/* ---------- Ghost guide ("노워") ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.guide-layer { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+.ghost { position: absolute; left: 0; top: 0; will-change: transform; pointer-events: none; }
+.gfloat { position: absolute; inset: 0; will-change: transform; pointer-events: none; }
+.gbody { pointer-events: auto; background: none; border: 0; padding: 0; cursor: pointer; border-radius: 50%; display: block; }
+.gbody canvas, .gbody svg { filter: drop-shadow(0 3px 5px rgb(25 31 40 / .28)); }   /* a soft outline so a white ghost still reads on a light page */
+.gbody:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.gshadow { position: absolute; left: 50%; bottom: -4px; width: 54%; height: 10px; transform: translateX(-50%); background: radial-gradient(closest-side, rgb(25 31 40 / .22), transparent); animation: gshadow 3.2s ease-in-out infinite; }
+@keyframes gshadow { 50% { transform: translateX(-50%) scale(.78); opacity: .65; } }
+.gbubble { position: absolute; pointer-events: auto; width: max-content; max-width: min(300px, calc(100vw - 32px)); background: var(--surface); color: var(--text); border: 1px solid var(--ctl-border); border-radius: 16px; padding: 12px 14px; font-size: 14px; line-height: 1.55; box-shadow: var(--shadow-mid); }
+.gbubble.above { bottom: calc(100% + 4px); } .gbubble.below { top: calc(100% + 4px); } .gbubble.left { left: 0; } .gbubble.right { right: 0; }
+.gbubble p { margin: 0; } .gbtns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gring { position: absolute; left: 0; top: 0; border: 3px solid var(--accent); outline: 2px solid var(--surface); outline-offset: -1px; border-radius: 16px; pointer-events: none; animation: gring 1.6s ease-in-out infinite; }
+@keyframes gring { 50% { opacity: .45; } }
+.gchat { position: absolute; right: 16px; bottom: 16px; width: 360px; max-width: calc(100vw - 32px); height: min(540px, calc(100vh - 32px)); background: var(--surface); border: 1px solid var(--ctl-border); border-radius: 20px; box-shadow: var(--shadow-mid); display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; }
+.gchat header { display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--border); }
+.gmsgs { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.gmsg { max-width: 88%; padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.55; }
+.gmsg.user { align-self: flex-end; background: var(--accent); color: var(--on-accent); } .gmsg.bot { align-self: flex-start; background: var(--surface-2); }
+.gsug { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; } .gsug .chip { cursor: pointer; border: 1px solid var(--border); min-height: 32px; }
+.gform { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+.gcredit { font-size: 11px; color: var(--text-3); padding: 6px 12px 8px; border-top: 1px solid var(--border); } .gcredit a { color: inherit; }
+@media (max-width: 800px) { .gchat { left: 8px; right: 8px; width: auto; max-width: none; bottom: 72px; height: min(60vh, 520px); } }
+@media (prefers-reduced-motion: reduce) { .gshadow, .gring { animation: none; } }
+
+.gsummon { position: absolute; right: 16px; bottom: 16px; width: 48px; padding: 0; border-radius: 50%; font-size: 22px; pointer-events: auto; box-shadow: var(--shadow-mid); }
+@media (max-width: 800px) { .gsummon { bottom: 76px; } }

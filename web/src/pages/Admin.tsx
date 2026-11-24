@@ -128,7 +128,7 @@ export default function Admin() {
   return (
     <>
       <PageHead title="관리자 콘솔" sub="AI 자동화의 신뢰를 측정하고 단계를 관리합니다." />
-      <div className="tabs" role="tablist">{T.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
+      <div className="tabs" role="tablist" data-guide="admin-tabs">{T.map(([k, l]) => <button key={k} data-guide={`admin-tab-${k}`} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
       {tab === "auto" ? <Autonomy /> : tab === "ops" ? <Ops /> : tab === "acts" ? <Proposals /> : tab === "learn" ? <Learning /> : <Docs />}
     </>
   );

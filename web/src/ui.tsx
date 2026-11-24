@@ -20,9 +20,9 @@ export const Icon = ({ n, size = 18 }: { n: keyof typeof P; size?: number }) => 
 
 export const Avatar = ({ name }: { name: string }) => <span className="avatar" aria-hidden="true">{name.slice(0, 1)}</span>;
 export const Badge = ({ kind = "", children }: { kind?: string; children: ReactNode }) => <span className={`badge ${kind}`}>{children}</span>;
-export const Card = ({ kind = "", children }: { kind?: string; children: ReactNode }) => <section className={`card ${kind}`}>{children}</section>;
-export const PageHead = ({ title, sub }: { title: string; sub?: string }) => (
-  <header className="page-head"><h1>{title}</h1>{sub && <p>{sub}</p>}</header>
+export const Card = ({ kind = "", children, guide }: { kind?: string; children: ReactNode; guide?: string }) => <section className={`card ${kind}`} data-guide={guide}>{children}</section>;
+export const PageHead = ({ title, sub, guide }: { title: string; sub?: string; guide?: string }) => (
+  <header className="page-head" data-guide={guide}><h1>{title}</h1>{sub && <p>{sub}</p>}</header>
 );
 export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
 export const Skeletons = ({ n = 3 }: { n?: number }) => (

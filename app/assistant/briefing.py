@@ -64,7 +64,7 @@ def rule_based(user, items) -> dict:
     return {"summary": summary, "todos": todos, "fyi": fyi}
 
 
-def _llm_json(client, system, user_msg):
+def _llm_json(client, system, user_msg, pv=PV):
     last = ""
     for _ in range(2):
         res, err, out = None, None, None
@@ -73,7 +73,7 @@ def _llm_json(client, system, user_msg):
             out = parse_json(res.text)
         except Exception as ex:
             err = f"{type(ex).__name__}: {ex}"[:300]
-        pipeline._log_call(None, client, res, int(out is not None), err, PV)
+        pipeline._log_call(None, client, res, int(out is not None), err, pv)
         if out is not None:
             return out
         last = err

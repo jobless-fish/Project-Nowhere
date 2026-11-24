@@ -35,9 +35,9 @@ export default function Org({ s }: { s: Session }) {
       <div className="split" style={{ gridTemplateColumns: "minmax(0,5fr) minmax(0,4fr)" }}>
         <div className="stack" style={{ gap: 12 }}>
           <label className="small muted" htmlFor="q">이름·직무·팀·이메일로 찾기</label>
-          <input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="예) 백엔드, 보상심사, 김" />
+          <input id="q" data-guide="org-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="예) 백엔드, 보상심사, 김" />
           <Card kind="flat"><div className="row" style={{ gap: 12 }}><Avatar name={org.ceo.name} /><div><b>{org.ceo.name}</b> <span className="muted">대표이사</span><div className="small muted">직속 {org.departments.length}개 본부·실</div></div></div></Card>
-          {org.departments.map((d) => (
+          <div data-guide="org-depts" className="stack" style={{ gap: 12 }}>{org.departments.map((d) => (
             <details key={d.key} className="card flat" style={{ padding: 0 }}>
               <summary style={{ padding: 16, cursor: "pointer", minHeight: 44, listStyle: "none" }}>
                 <div className="row wrap"><b className="grow">{d.name}</b><Badge>{d.headcount}명</Badge><Badge kind="accent">{d.location.replace("서울 ", "")}</Badge></div>
@@ -52,11 +52,11 @@ export default function Org({ s }: { s: Session }) {
                 ))}
               </div>
             </details>
-          ))}
+          ))}</div>
         </div>
         <div className="stack" style={{ gap: 12 }}>
           {list && (
-            <Card><h2 style={{ marginBottom: 8 }}>{unit && !q ? unit.unit : "검색 결과"} <span className="small muted">({total}명)</span></h2>
+            <Card guide="org-result"><h2 style={{ marginBottom: 8 }}>{unit && !q ? unit.unit : "검색 결과"} <span className="small muted">({total}명)</span></h2>
               {list.length === 0 ? <Empty>찾는 사람이 없어요.</Empty> : <div className="list">{list.map((p) => (
                 <button key={p.id} aria-current={sel?.id === p.id} onClick={() => open(p.id)}>
                   <div className="row"><b className="grow">{p.name}</b><span className="small muted">{p.position === "팀원" ? p.grade : p.position}</span></div>
