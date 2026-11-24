@@ -118,6 +118,8 @@ def decide(user, aid: int, approve: bool, subject: str | None, body: str | None,
         c.execute("UPDATE actions SET status=?, note=?, decided_at=? WHERE id=?", (status, note, _now(), aid))
     if status == "sent":  # trust signal: sent exactly as drafted = the assistant got it right
         _record(a, agree=not edited)
+        from . import flow
+        flow.reply_sent(user, a["todo_key"], a["to_name"], mid)
     return get(aid)
 
 

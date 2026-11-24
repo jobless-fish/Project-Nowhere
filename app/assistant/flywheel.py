@@ -34,6 +34,8 @@ def harvest(source) -> dict:
 
     with db.conn() as c:
         fbs = [dict(r) for r in c.execute("SELECT * FROM todo_feedback WHERE value IN ('done','wrong')")]
+        fbs += [{"user_id": r["user_id"], "day": r["day"], "todo_key": r["todo_key"], "value": "done"}
+                for r in c.execute("SELECT user_id, day, todo_key FROM todo_flow WHERE status='done'")]
         briefs = {(r["user_id"], r["day"]): json.loads(r["payload"]) for r in c.execute("SELECT * FROM briefings")}
         acts = [dict(r) for r in c.execute("SELECT * FROM actions WHERE status IN ('sent','rejected')")]
     new = {"todo": 0, "reply": 0}

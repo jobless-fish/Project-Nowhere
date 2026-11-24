@@ -36,8 +36,8 @@ def test_harvest_labels_and_is_idempotent(env):
     a = c.post("/assistant/actions/propose", json={"user_id": "u_kim", "todo_key": k("mail-mk1")}).json()
     c.post(f"/assistant/actions/{a['id']}/decision", json={"user_id": "u_kim", "approve": True, "body": "고친 본문입니다."})
     first = c.post("/assistant/eval/harvest").json()
-    assert first["new"] == {"todo": 2, "reply": 1}
-    assert first["by"] == {"todo:negative": 1, "todo:positive": 1, "reply:edited": 1}
+    assert first["new"] == {"todo": 3, "reply": 1}          # the done/wrong feedback, plus the todo that finished by SENDING a reply
+    assert first["by"] == {"todo:negative": 1, "todo:positive": 2, "reply:edited": 1}
     assert c.post("/assistant/eval/harvest").json()["new"] == {"todo": 0, "reply": 0}      # re-harvest adds nothing
     rows = c.get("/assistant/eval/export").json()
     todo = next(r for r in rows if r["label"] == "negative")

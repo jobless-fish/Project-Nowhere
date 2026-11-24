@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS actions(
 CREATE TABLE IF NOT EXISTS eval_cases(
   key TEXT PRIMARY KEY, kind TEXT, label TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS todo_flow(
+  user_id TEXT, day TEXT, todo_key TEXT, status TEXT, outcome TEXT, ref TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(user_id, day, todo_key)
+);
 CREATE TABLE IF NOT EXISTS erp_records(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP

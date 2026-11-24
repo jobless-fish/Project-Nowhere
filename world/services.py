@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from .auth import current_user, sign
+from . import npc
 from .store import COMPANY, PASSWORD, store
 
 log = logging.getLogger("world")
@@ -97,14 +98,36 @@ mail = APIRouter(prefix="/mail")
 def _mail_out(m):
     sender = _person(m["sender"]) if m["sender"] else {"id": None, "name": m.get("external_name") or m["external"], "email": m["external"]}
     is_ext = m["external"] is not None and not m["external"].endswith("@nowhere.example")
-    return {"id": m["id"], "from": sender, "external": is_ext, "to": m["to"],
-            "subject": m["subject"], "body": m["body"], "ts": m["ts"]}
+    return {"id": m["id"], "from": sender, "external": is_ext, "to": m["to"], "to_people": [_person(t) for t in m["to"] if t in store.users],
+            "to_external": m.get("external_to", []), "subject": m["subject"], "body": m["body"], "ts": m["ts"], "thread": m.get("thread")}
 
 
 @mail.get("/inbox")
 def inbox(hours: int = 24, limit: int = 50, offset: int = 0, me=Depends(current_user)):
+    store.deliver_due()
     rows = [_mail_out(m) for m in store.mails if me["id"] in m["to"] and m["ts"] >= _since(hours)]
     return _page(rows, min(limit, 100), offset)
+
+
+@mail.get("/sent")
+def sent(hours: int = 72, limit: int = 50, offset: int = 0, me=Depends(current_user)):
+    rows = [_mail_out(m) for m in store.mails if m["sender"] == me["id"] and m["ts"] >= _since(hours)]
+    return _page(rows, min(limit, 100), offset)
+
+
+@mail.get("/unread")
+def unread(me=Depends(current_user)):
+    store.deliver_due()
+    seen = store.mail_seen.get(me["id"], store.t0.isoformat(timespec="seconds"))
+    new = [m for m in store.mails if me["id"] in m["to"] and m["sender"] != me["id"] and m["ts"] > seen]
+    last = max(new, key=lambda m: m["ts"], default=None)
+    return {"count": len(new), "latest": _mail_out(last) if last else None, "typing": store.generating > 0 or any(p["kind"] == "mail" and me["id"] in p["to"] for p in store.pending)}
+
+
+@mail.post("/seen")
+def mail_seen(me=Depends(current_user)):
+    store.mail_seen[me["id"]] = store.now_iso()
+    return {"ok": True}
 
 
 @mail.get("/messages/{mid}")
@@ -122,36 +145,110 @@ class Send(BaseModel):
     to_external: list[str] = []
     subject: str
     body: str
+    in_reply_to: str | None = None
+    confirm_external: bool = False
 
 
 @mail.post("/send", status_code=201)
 def send(b: Send, me=Depends(current_user)):
-    if not (b.to or b.to_external) or any(t not in store.users for t in b.to):
+    to = list(dict.fromkeys(b.to))
+    if not (to or b.to_external) or any(t not in store.users for t in to):
         raise HTTPException(422, "unknown or missing recipient")
-    mid = f"s{len(store.mails) + 1}"
-    store.mails.insert(0, dict(id=mid, sender=me["id"], external=None, to=b.to, external_to=b.to_external, subject=b.subject, body=b.body,
-                               ts=datetime.now().isoformat(timespec="seconds")))
-    return {"id": mid}
+    if len(to) > 10 or len(b.to_external) > 3:
+        raise HTTPException(422, "too many recipients")
+    if not b.subject.strip() or not b.body.strip() or len(b.subject) > 200 or len(b.body) > 5000:
+        raise HTTPException(422, "subject and body are required (subject <= 200, body <= 5000 characters)")
+    if b.to_external and not b.confirm_external:
+        raise HTTPException(409, "external recipients need confirm_external")
+    mid = store.next_id("s")
+    store.mails.insert(0, dict(id=mid, sender=me["id"], external=None, to=to, external_to=b.to_external, subject=b.subject.strip(), body=b.body.strip(),
+                               ts=store.now_iso(), thread=b.in_reply_to))
+    pool = [store.users[t] for t in to]
+    ext = (b.to_external[0].split("@")[0].replace(".", " ").title() + " (외부)", b.to_external[0]) if b.to_external and not pool else None
+    n = npc.respond(store, "mail", me, pool, b.body, subject=b.subject, mail_id=mid, external=ext)
+    return {"id": mid, "replies_coming": n}
 
 
 # ---- Messenger ----
 chat = APIRouter(prefix="/chat")
 
 
+def _chat_unread(uid: str, cid: str) -> int:
+    seen = store.chat_seen.get((uid, cid), store.t0.isoformat(timespec="seconds"))
+    return sum(1 for m in store.chat if m["channel"] == cid and m["ts"] > seen and m["author"] != uid)
+
+
+def _chan(cid, v, me):
+    if cid.startswith("dm_"):
+        other = next(u for u in store.members(cid) if u != me["id"]) if len(store.members(cid)) > 1 else me["id"]
+        return {"id": cid, "name": store.users[other]["name"], "private": True, "dm": True, "other": _person(other), "unread": _chat_unread(me["id"], cid)}
+    return {"id": cid, "name": v[0], "private": v[1], "dm": False, "unread": _chat_unread(me["id"], cid)}
+
+
 @chat.get("/channels")
 def channels(me=Depends(current_user)):
-    return [{"id": c, "name": v[0], "private": v[1]} for c, v in store.channels.items() if me["id"] in store.members(c)]
+    store.deliver_due()
+    return [_chan(c, v, me) for c, v in store.channels.items() if me["id"] in store.members(c)]
+
+
+@chat.get("/unread")
+def chat_unread(me=Depends(current_user)):
+    store.deliver_due()
+    by = {c: _chat_unread(me["id"], c) for c in store.channels if me["id"] in store.members(c)}
+    by = {c: n for c, n in by.items() if n}
+    return {"total": sum(by.values()), "by_channel": by, "typing": store.generating > 0 or bool(store.pending)}
 
 
 @chat.get("/channels/{cid}/messages")
-def messages(cid: str, hours: int = 24, limit: int = 50, offset: int = 0, me=Depends(current_user)):
+def messages(cid: str, hours: int = 24, limit: int = 50, offset: int = 0, latest: bool = False, me=Depends(current_user)):
     if cid not in store.channels:
         raise HTTPException(404, "no such channel")
     if me["id"] not in store.members(cid):
         raise HTTPException(403, "not a member")
-    rows = [{**m, "author": _person(m["author"]), "channel_name": store.channels[cid][0]}
-            for m in store.chat if m["channel"] == cid and m["ts"] >= _since(hours)]
+    store.deliver_due()
+    rows = sorted(({**m, "author": _person(m["author"]), "channel_name": store.channels[cid][0]} for m in store.chat if m["channel"] == cid and m["ts"] >= _since(hours)),
+                  key=lambda m: m["ts"])
+    if latest:   # the chat window: the newest `limit` messages, oldest first
+        store.chat_seen[(me["id"], cid)] = store.now_iso()
+        typing = store.generating > 0 or any(p["kind"] == "chat" and p["channel"] == cid for p in store.pending)
+        return {"items": rows[-min(limit, 200):], "next_offset": None, "typing": typing}
     return _page(rows, min(limit, 100), offset)
+
+
+class Post(BaseModel):
+    text: str
+
+
+class DM(BaseModel):
+    to: str
+
+
+@chat.post("/dm")
+def open_dm(b: DM, me=Depends(current_user)):
+    if b.to not in store.users or b.to == me["id"]:
+        raise HTTPException(422, "choose a colleague")
+    cid = store.dm(me["id"], b.to)
+    return _chan(cid, store.channels[cid], me)
+
+
+@chat.post("/channels/{cid}/messages", status_code=201)
+def post_message(cid: str, b: Post, me=Depends(current_user)):
+    if cid not in store.channels:
+        raise HTTPException(404, "no such channel")
+    if me["id"] not in store.members(cid):
+        raise HTTPException(403, "not a member")
+    text = b.text.strip()
+    if not text or len(text) > 1000:
+        raise HTTPException(422, "message must be 1-1000 characters")
+    store.deliver_due()
+    ts = store.now_iso()
+    mid = store.next_id("cu")
+    store.chat.append(dict(id=mid, channel=cid, author=me["id"], text=text, ts=ts))
+    store.chat_seen[(me["id"], cid)] = ts
+    members = [store.users[u] for u in store.members(cid)]
+    hist = [{"from": store.users[m["author"]]["name"], "text": m["text"]} for m in [m for m in store.chat if m["channel"] == cid][-7:-1]]
+    n = npc.respond(store, "dm" if cid.startswith("dm_") else "chat", me, members, text, channel=cid, history=hist)
+    return {"id": mid, "ts": ts, "replies_coming": n}
 
 
 # ---- Issue tracker ----
@@ -165,13 +262,43 @@ def issues(hours: int = 48, me=Depends(current_user)):
     return {"items": [i for i in store.issues if visible(i) and i["ts"] >= _since(hours)]}
 
 
+class IssueUpdate(BaseModel):
+    status: str
+    comment: str = ""
+
+
+@tracker.patch("/issues/{iid}")
+def update_issue(iid: str, b: IssueUpdate, me=Depends(current_user)):
+    i = next((i for i in store.issues if i["id"] == iid), None)
+    if not i:
+        raise HTTPException(404, "no such issue")
+    if i["assignee"] != me["id"]:
+        raise HTTPException(403, "only the assignee can change an issue")
+    if b.status not in ("열림", "진행 중", "해결"):
+        raise HTTPException(422, "status must be 열림, 진행 중 or 해결")
+    if b.status == "해결" and len(b.comment.strip()) < 2:
+        raise HTTPException(422, "resolving needs a short note on what was done")
+    i["status"] = b.status
+    i["log"].append({"by": me["id"], "status": b.status, "comment": b.comment.strip()[:500], "ts": store.now_iso()})
+    return i
+
+
 # ---- Portal (notices / board) ----
 portal = APIRouter(prefix="/portal")
 
 
 @portal.get("/notices")
 def notices(hours: int = 72, me=Depends(current_user)):
-    return {"items": [n for n in store.notices if store.audience_ok(me, n["audience"]) and n["ts"] >= _since(hours)]}
+    return {"items": [{**n, "acked": (me["id"], n["id"]) in store.acks} for n in store.notices if store.audience_ok(me, n["audience"]) and n["ts"] >= _since(hours)]}
+
+
+@portal.post("/notices/{nid}/ack")
+def ack_notice(nid: str, me=Depends(current_user)):
+    n = next((n for n in store.notices if n["id"] == nid), None)
+    if not n or not store.audience_ok(me, n["audience"]):
+        raise HTTPException(404, "no such notice")
+    store.acks.add((me["id"], nid))
+    return {"acked": True, "at": store.now_iso()}
 
 
 @portal.get("/posts")

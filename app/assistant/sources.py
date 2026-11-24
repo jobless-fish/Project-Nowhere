@@ -29,6 +29,7 @@ class Item:
     external: bool = False
     reply_to: str | None = None   # user:<id> | ext:<email>; only for mail
     severity: str | None = None   # issues only: P1..P4
+    done: bool = False            # already handled in the source system: resolved issue, acknowledged notice
 
 
 class Source(Protocol):

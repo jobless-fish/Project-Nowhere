@@ -20,9 +20,17 @@ async function req<T>(url: string, init: RequestInit = {}, token?: string): Prom
   return r.json();
 }
 
+/** A readable message from an API error ({"detail": "..."} -> the sentence). */
+export const errText = (e: unknown, fallback = "처리하지 못했어요. 잠시 뒤에 다시 해 주세요."): string => {
+  if (!(e instanceof ApiError)) return fallback;
+  try { const d = JSON.parse(e.message).detail; if (typeof d === "string") return d; } catch { /* not JSON */ }
+  return e.message && e.message.length < 140 ? e.message : fallback;
+};
+
 export const world = {
   get: <T,>(path: string, s: Session) => req<T>(`/world${path}`, {}, s.token),
   post: <T,>(path: string, body: unknown, s?: Session) => req<T>(`/world${path}`, { method: "POST", body: JSON.stringify(body) }, s?.token),
+  patch: <T,>(path: string, body: unknown, s: Session) => req<T>(`/world${path}`, { method: "PATCH", body: JSON.stringify(body) }, s.token),
 };
 export const api = {
   get: <T,>(path: string) => req<T>(`/api${path}`),

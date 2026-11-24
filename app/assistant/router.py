@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from .. import db
 from ..llm import get_client
 from .. import autonomy
-from . import actions, flywheel, guide
+from . import actions, flow, flywheel, guide
 from .briefing import build_briefing, build_digest
 from .sources import get_source
 
@@ -66,7 +66,7 @@ def _clock_in(user_id: str):
         at = c.execute("SELECT clock_in_at FROM attendance WHERE user_id=? AND day=?", (user.id, day)).fetchone()[0]
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user.id, day)).fetchone()
     if row:  # clocking in twice must not regenerate (cost) or change the list the user is working from
-        return {"clock_in_at": at, "briefing": json.loads(row[0]), "cached": True}
+        return {"clock_in_at": at, "briefing": flow.attach(user.id, json.loads(row[0])), "cached": True}
     items = get_source().fetch(user, hours=24)
     brief = build_briefing(user, items, get_client())
     brief["user"] = user.__dict__
@@ -76,7 +76,7 @@ def _clock_in(user_id: str):
     autonomy.evaluate(["reply_internal"])                       # demote first if quality dropped
     if autonomy.get_mode("reply_internal") == "auto":           # earned trust: drafts are prepared, never sent
         _prepare_drafts(user, brief)
-    return {"clock_in_at": at, "briefing": brief, "cached": False}
+    return {"clock_in_at": at, "briefing": flow.attach(user.id, brief), "cached": False}
 
 
 def _prepare_drafts(user, brief):
@@ -95,7 +95,7 @@ def briefing(user_id: str):
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, _today())).fetchone()
     if not row:
         raise HTTPException(404, "not clocked in yet")
-    return json.loads(row[0])
+    return flow.attach(user_id, json.loads(row[0]))
 
 
 @router.get("/news")
@@ -230,3 +230,66 @@ def diag():
     except Exception as e:
         out["ok"], out["error"] = False, f"{type(e).__name__}: {str(e)[:160]}"
     return out
+
+
+def _todo(user_id: str, key: str) -> dict:
+    with db.conn() as c:
+        row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, _today())).fetchone()
+    t = next((t for t in (json.loads(row[0])["todos"] if row else []) if t["key"] == key), None)
+    if not t:
+        raise HTTPException(404, "todo not found")
+    return t
+
+
+class TodoAct(BaseModel):
+    user_id: str
+    note: str = ""
+    how: str = ""          # mail: "no_reply"
+
+
+def _run(user_id: str, key: str, fn):
+    user, t = _user(user_id), _todo(user_id, key)
+    try:
+        fn(user, t, get_source())
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    except Exception as e:                      # the company system refused (permissions, rules) or is unreachable
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        raise HTTPException(409 if status in (403, 422) else 502, f"사내 시스템이 요청을 처리하지 못했어요 ({status or type(e).__name__})")
+    return flow.attach(user_id, {"todos": [t]})["todos"][0]
+
+
+@router.post("/todos/{key}/start")
+def todo_start(key: str, b: TodoAct):
+    return _run(b.user_id, key, lambda u, t, s: flow.start(u, t, s))
+
+
+@router.post("/todos/{key}/complete")
+def todo_complete(key: str, b: TodoAct):
+    return _run(b.user_id, key, lambda u, t, s: flow.complete(u, t, s, b.note, b.how))
+
+
+@router.post("/todos/{key}/reopen")
+def todo_reopen(key: str, b: TodoAct):
+    def go(u, t, s):
+        if flow.kind_of(t) == "issue" and hasattr(s, "update_issue") and (flow.flows(u.id).get(key) or {}).get("status") in ("in_progress", "done"):
+            s.update_issue(u, flow.raw_id(t), "열림", "다시 열었어요")
+        flow.drop(u.id, key)
+    return _run(b.user_id, key, go)
+
+
+@router.post("/briefing/refresh")
+def briefing_refresh(b: ClockIn):
+    """New mail may have arrived since this morning: rebuild today's briefing. Finished work keeps its state (keys are stable)."""
+    user = _user(b.user_id)
+    with db.conn() as c:
+        old = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user.id, _today())).fetchone()
+    if not old:
+        raise HTTPException(404, "not clocked in yet")
+    before = {t["key"] for t in json.loads(old[0])["todos"]}
+    brief = build_briefing(user, get_source().fetch(user, hours=24), get_client())
+    brief["user"] = user.__dict__
+    with db.conn() as c:
+        c.execute("UPDATE briefings SET payload=? WHERE user_id=? AND day=?", (json.dumps(brief, ensure_ascii=False), user.id, _today()))
+    out = flow.attach(user.id, brief)
+    return {"briefing": out, "new": [t["key"] for t in out["todos"] if t["key"] not in before]}

@@ -54,9 +54,9 @@ class WorldSource:
                               reply_to=(f"user:{m['from']['id']}" if m["from"]["id"] else f"ext:{m['from']['email']}")))
         for i in self._get(user, "/tracker/issues", hours=max(hours, 48))["items"]:
             items.append(Item(f"iss-{i['id']}", "issue", i["title"], i["body"], i["key"], self._hours(i["ts"]),
-                              mine, assignee=i["assignee"], severity=i.get("severity")))
+                              mine, assignee=i["assignee"], severity=i.get("severity"), done=i.get("status") == "해결"))
         for n in self._get(user, "/portal/notices", hours=72)["items"]:
-            items.append(Item(f"ntc-{n['id']}", "notice", n["title"], n["body"], "공지", self._hours(n["ts"]), mine))
+            items.append(Item(f"ntc-{n['id']}", "notice", n["title"], n["body"], "공지", self._hours(n["ts"]), mine, done=bool(n.get("acked"))))
         for p in self._get(user, "/portal/posts", hours=72)["items"]:
             items.append(Item(f"post-{p['id']}", "post", p["title"], p["body"], "게시판", self._hours(p["ts"]), mine))
         for ch in self._get(user, "/chat/channels"):
@@ -69,10 +69,20 @@ class WorldSource:
         """Sends AS the user (their own token). The assistant has no mailbox identity of its own."""
         kind, _, ref = reply_to.partition(":")
         payload = {"to": [ref] if kind == "user" else [], "to_external": [ref] if kind == "ext" else [],
-                   "subject": subject, "body": body}
+                   "subject": subject, "body": body, "confirm_external": True}
         r = self.http.post("/mail/send", json=payload, headers=self._headers(user))
         r.raise_for_status()
         return r.json()["id"]
+
+    def update_issue(self, user: User, issue_id: str, status: str, comment: str) -> dict:
+        r = self.http.patch(f"/tracker/issues/{issue_id}", json={"status": status, "comment": comment}, headers=self._headers(user))
+        r.raise_for_status()
+        return r.json()
+
+    def ack_notice(self, user: User, notice_id: str) -> dict:
+        r = self.http.post(f"/portal/notices/{notice_id}/ack", headers=self._headers(user))
+        r.raise_for_status()
+        return r.json()
 
     def gold(self, user_id: str) -> set:
         from world.store import GOLD

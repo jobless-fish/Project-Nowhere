@@ -99,7 +99,7 @@ def _finish(raw: dict, items, flagged_ids: set) -> dict:
 def build_briefing(user, items, client) -> dict:
     flagged = [i for i in items if is_suspicious(i)]
     flagged_ids = {i.id for i in flagged}
-    safe = [i for i in items if i.id not in flagged_ids and i.source in ("mail", "issue", "notice")]
+    safe = [i for i in items if i.id not in flagged_ids and i.source in ("mail", "issue", "notice") and not i.done]   # resolved issues / acknowledged notices are finished
     degraded = False
     if client.provider == "mock":
         raw = rule_based(user, safe)

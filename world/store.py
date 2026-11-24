@@ -1,6 +1,7 @@
 """Nowhere (노웨어): a fictional fintech/insurtech startup. In-memory seed data for every internal system.
 Access control is enforced by the *services* (like a real company), not by the AI assistant."""
 import random
+import time
 from datetime import datetime, timedelta
 
 DOMAIN = "nowhere.example"
@@ -111,6 +112,36 @@ class Store:
         self.chat += [dict(id=m["id"], channel=m["channel"], author=m["author"], text=m["text"], ts=slot_ts(self.t0, m["slot"])) for m in w["messages"]]
         self.channels = {**CHANNELS, **w["channels"]}
         self.attendance = {}
+        # --- live state: the signed-in person writes, colleagues answer (world/npc.py) ---
+        for i in self.issues:
+            i.setdefault("status", "열림")
+            i.setdefault("log", [])
+        self.now = time.time                       # injectable clock (tests set delays to zero)
+        self.pending, self.generating, self.acks, self.seq = [], 0, set(), 0
+        self.mail_seen, self.chat_seen = {}, {}      # per user: the moment everything older counts as read
+
+    def next_id(self, prefix: str) -> str:
+        self.seq += 1
+        return f"{prefix}{self.seq}"
+
+    def now_iso(self) -> str:
+        return datetime.fromtimestamp(self.now()).isoformat(timespec="seconds")
+
+    def dm(self, a: str, b: str) -> str:
+        cid = "dm_" + "_".join(sorted([a, b]))
+        self.channels.setdefault(cid, ("DM", True, f"{a},{b}"))
+        return cid
+
+    def deliver_due(self):
+        """Move queued replies whose time has come into the mailbox / channel (called whenever a client reads)."""
+        t, ts = self.now(), self.now_iso()
+        for p in sorted([p for p in self.pending if p["due"] <= t], key=lambda p: p["due"]):
+            self.pending.remove(p)
+            if p["kind"] == "chat":
+                self.chat.append(dict(id=self.next_id("cu"), channel=p["channel"], author=p["author"], text=p["text"], ts=ts))
+            else:
+                self.mails.insert(0, dict(id=self.next_id("r"), sender=p.get("sender"), external=p.get("external"), external_name=p.get("external_name"), to=p["to"],
+                                          subject=p["subject"], body=p["body"], ts=ts, thread=p.get("thread")))
 
     def members(self, cid: str) -> set:
         out = set()

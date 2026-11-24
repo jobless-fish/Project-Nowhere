@@ -12,6 +12,7 @@ import News from "./pages/News";
 import Org from "./pages/Org";
 import Guide from "./guide/Guide";
 import ThemeToggle from "./theme";
+import { LiveProvider, useLive } from "./live";
 
 const NAV = [
   { id: "home", label: "홈", icon: "home" }, { id: "news", label: "소식", icon: "news" },
@@ -19,11 +20,26 @@ const NAV = [
 ] as const;
 
 const useRoute = () => {
-  const get = () => (location.hash.replace("#/", "") || "home");
+  const get = () => (location.hash.replace("#/", "").split("?")[0] || "home");
   const [r, setR] = useState(get);
   useEffect(() => { const f = () => setR(get()); addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
   return r;
 };
+
+function Nav({ route }: { route: string }) {
+  const live = useLive();
+  const n: Record<string, number> = { mail: live.mail, chat: live.chat };
+  const link = (id: string, label: string, icon: Parameters<typeof Icon>[0]["n"]) => (
+    <a key={id} href={`#/${id}`} data-guide={`nav-${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}{n[id] > 0 && <span className="count" aria-label={`새 항목 ${n[id]}개`}>{n[id]}</span>}</a>
+  );
+  return (
+    <nav className="nav" aria-label="주 메뉴">
+      {NAV.map((x) => link(x.id, x.label, x.icon))}
+      <div className="sep" /><span className="label">관리</span>
+      {link("admin", "관리자 콘솔", "admin")}
+    </nav>
+  );
+}
 
 export default function App() {
   const [session, set] = useState<Session | null>(getSession);
@@ -34,18 +50,11 @@ export default function App() {
 
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
     chat: <Chat s={session} />, org: <Org s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
-  const link = (id: string, label: string, icon: Parameters<typeof Icon>[0]["n"]) => (
-    <a key={id} href={`#/${id}`} data-guide={`nav-${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}</a>
-  );
   return (
-    <div className="shell">
+    <LiveProvider s={session}><div className="shell">
       <aside className="side">
         <div className="brand">nowhere</div>
-        <nav className="nav" aria-label="주 메뉴">
-          {NAV.map((n) => link(n.id, n.label, n.icon))}
-          <div className="sep" /><span className="label">관리</span>
-          {link("admin", "관리자 콘솔", "admin")}
-        </nav>
+        <Nav route={route} />
         <div className="me">
           <Avatar name={session.user.name} />
           <div style={{ minWidth: 0 }}><div className="trunc" style={{ fontWeight: 700 }}>{session.user.name}</div>
@@ -56,6 +65,6 @@ export default function App() {
       <ThemeToggle />
       <main className="main">{page}</main>
       <Guide session={session} />
-    </div>
+    </div></LiveProvider>
   );
 }
