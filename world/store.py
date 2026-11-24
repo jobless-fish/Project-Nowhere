@@ -104,6 +104,9 @@ class Store:
                             escalated=i[7], ts=ts(i[8])) for i in ISSUES]
         self.notices = [dict(id=x[0], title=x[1], body=x[2], audience=x[3], ts=ts(x[4])) for x in NOTICES]
         self.posts = [dict(id=x[0], title=x[1], body=x[2], audience=x[3], ts=ts(x[4])) for x in POSTS]
+        from . import company, finance      # money and performance create work: renewals, budget pace, plan misses (see finance.signals)
+        sig = finance.signals(self.users, company.customers(self.users, self.t0.date()), self.t0)
+        self.notices += [dict(id=g["id"], title=g["title"], body=g["body"], audience=g["audience"], ts=ts(g["hours_ago"])) for g in sig]
         self.chat = [dict(id=c[0], channel=c[1], author=c[2], text=c[3], ts=ts(c[4])) for c in CHAT]
         w = traffic.generate_world()
         self.issues += [dict(id=i["id"], key=i["key"], title=i["title"], body=i["body"], team=i["team"], assignee=i["assignee"], severity=i["severity"],
@@ -159,7 +162,8 @@ class Store:
         return out
 
     def audience_ok(self, user: dict, audience: str) -> bool:
-        return audience == "all" or (audience.startswith("team:") and user["team"] == audience[5:])
+        return (audience == "all" or (audience.startswith("team:") and user["team"] == audience[5:]) or audience == f"user:{user['id']}"
+                or (audience.startswith("role:") and user["role"] == audience[5:]))
 
 
 store = Store()

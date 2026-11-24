@@ -335,6 +335,7 @@ def clock_in(bg: BackgroundTasks, me=Depends(current_user)):
 from datetime import date as _date  # noqa: E402
 
 from . import archive as arch  # noqa: E402
+from . import finance as fin  # noqa: E402
 from . import company as co  # noqa: E402
 from .store import COMPANY  # noqa: E402
 
@@ -387,6 +388,37 @@ def company_wiki_doc(slug: str, me=Depends(current_user)):
     if not d:
         raise HTTPException(404, "no such document")
     return d
+
+
+def _finance_viewer(me) -> bool:
+    return me["role"] == "executive" or me["dept"] in ("경영지원본부", "경영기획실")
+
+
+def _customers():
+    return co.customers(store.users, _today())
+
+
+@company.get("/finance")
+def company_finance(me=Depends(current_user)):
+    if not _finance_viewer(me):
+        raise HTTPException(403, "P&L and cash are visible to executives and finance/planning staff")
+    rows = fin.pnl(store.users, _customers())
+    return {"quarters": rows, "years": fin.yearly_pnl(rows), "runway": fin.runway(store.users, _customers()), "funding": [{"month": m, "eok": v, "round": n} for m, v, n in fin.FUNDING]}
+
+
+@company.get("/budgets")
+def company_budgets(me=Depends(current_user)):
+    rows = fin.budgets(store.users)
+    if not _finance_viewer(me):
+        rows = [r for r in rows if r["head"] == me["id"]]
+        if not rows:
+            raise HTTPException(403, "department budgets are visible to finance staff, executives and the department head")
+    return {"items": rows, "scope": "all" if _finance_viewer(me) else "own"}
+
+
+@company.get("/targets")
+def company_targets(me=Depends(current_user)):
+    return {"items": fin.targets(store.users, _customers())}
 
 
 @company.get("/years")

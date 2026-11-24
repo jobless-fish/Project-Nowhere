@@ -164,3 +164,75 @@ def test_calendar_covers_every_year_with_real_holidays_and_no_weekend_company_ev
                 assert date.fromisoformat(e["date"]).weekday() < 5 or "정전" in e["title"], e
     assert c.get("/company/calendar", params={"year": 2021}).json()["items"]
     assert c.get("/company/calendar", params={"year": 2030}).status_code == 404
+
+
+# ---- money: P&L, cash, budgets, targets and the work they create ----
+from world import finance as fin  # noqa: E402
+
+
+def _tok(c, uid):
+    return {"Authorization": "Bearer " + c.post("/sso/token", json={"user_id": uid, "password": "demo1234"}).json()["access_token"]}
+
+
+def test_cash_is_never_negative_and_matches_funding_minus_losses(c):
+    cs = co.customers(store.users)
+    rows = fin.pnl(store.users, cs)
+    assert min(r["cash"] for r in rows) >= 0
+    assert abs(rows[-1]["cash"] - (sum(v for _, v, _ in fin.FUNDING) + sum(r["profit"] for r in rows))) < 0.6     # rounding only
+    assert all(r["revenue"] >= 0 and r["cost"] > 0 for r in rows)
+
+
+def test_funding_rounds_match_the_history(c):
+    titles = " ".join(e["title"] for e in co.history())
+    for _, v, name in fin.FUNDING:
+        if name in ("시드", "프리 A", "시리즈 A", "브릿지", "시리즈 B"):
+            assert f"{name.replace('시리즈 ', '시리즈 ') } {int(v)}억원".replace("시드 ", "시드 ") in titles or f"{name} 투자 {int(v)}억원" in titles or f"{name} {int(v)}억원" in titles
+
+
+def test_revenue_in_pnl_equals_the_archive_numbers(c):
+    cs = co.customers(store.users)
+    qs = {q["label"]: q for q in arch.quarters(store.users, cs)}
+    for r in fin.pnl(store.users, cs):
+        if not r["in_progress"]:
+            assert r["revenue"] == qs[r["label"]]["revenue_eok"]
+
+
+def test_finance_is_permissioned(c):
+    assert c.get("/company/finance").status_code == 403                      # a developer
+    assert c.get("/company/budgets").status_code == 403
+    assert c.get("/company/targets").status_code == 200                      # plan vs actual is shared in the town hall
+    cfo = _tok(c, "u_cfo")
+    assert c.get("/company/finance", headers=cfo).status_code == 200
+    assert len(c.get("/company/budgets", headers=cfo).json()["items"]) == 9
+    cto = _tok(c, "u_cto")
+    own = c.get("/company/budgets", headers=cto).json()
+    assert own["scope"] == "all" or [r["dept"] for r in own["items"]] == ["개발본부"]
+
+
+def test_department_head_sees_only_their_own_budget(c):
+    head = next(u for u in store.users.values() if u["position"] == "본부장" and u["dept"] == "사업본부")
+    r = c.get("/company/budgets", headers=_tok(c, head["id"])).json()
+    assert [x["dept"] for x in r["items"]] == ["사업본부"] and r["scope"] == "own"
+
+
+def test_numbers_create_work_for_the_right_people(c):
+    notices = {n["id"]: n for n in store.notices if n["id"].startswith("sig_")}
+    assert notices, "no signals"
+    renew = [n for n in notices.values() if n["title"].startswith("[갱신]")]
+    for n in renew:                                                          # goes to the real account owner
+        uid = n["audience"].removeprefix("user:")
+        assert store.users[uid]["unit"] in ("법인영업팀", "고객성공팀", "제휴·BD팀")
+    assert any(n["audience"] == "role:executive" for n in notices.values())
+    owner = renew[0]["audience"].removeprefix("user:")
+    mine = c.get("/portal/notices", headers=_tok(c, owner)).json()["items"]
+    assert any(n["id"] == renew[0]["id"] for n in mine)
+    other = c.get("/portal/notices").json()["items"]                         # the developer does not get someone else's renewal
+    assert all(n["id"] != renew[0]["id"] for n in other)
+
+
+def test_budget_overpace_signal_goes_to_department_head_and_cfo(c):
+    over = [b for b in fin.budgets(store.users) if b["over_pace"]]
+    assert over
+    for b in over:
+        ids = {n["audience"] for n in store.notices if n["id"].startswith(f"sig_budget_{b['dept']}")}
+        assert {f"user:{b['head']}", "user:u_cfo"} <= ids

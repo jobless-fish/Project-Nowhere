@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { world } from "../api";
-import type { CalEvent, HistoryItem, Overview, Party, Session, Term, WikiDoc, WikiRow, YearDetail, YearRec } from "../types";
+import type { Budget, CalEvent, Finance, Target, HistoryItem, Overview, Party, Session, Term, WikiDoc, WikiRow, YearDetail, YearRec } from "../types";
 import { Badge, Card, Empty, Failed, PageHead, Skeletons } from "../ui";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -115,6 +115,35 @@ function Years({ s }: { s: Session }) {
   );
 }
 
+function Money({ s }: { s: Session }) {
+  const fin = useGet<Finance>(s, "/company/finance"), bud = useGet<{ items: Budget[]; scope: string }>(s, "/company/budgets"), tg = useGet<{ items: Target[] }>(s, "/company/targets");
+  const [open, setOpen] = useState(false);
+  const f1 = (v: number) => nf.format(Math.round(v * 10) / 10);
+  const maxRev = Math.max(...(fin.d?.years.map((y) => Math.max(y.revenue, y.cost)) ?? [1]));
+  return (
+    <div className="stack" style={{ gap: 20 }}>
+      <section><h2>계획 대비 실적</h2>{tg.bad ? <Failed what="실적" onRetry={tg.load} /> : !tg.d ? <Skeletons n={2} /> :
+        <Card kind="flat"><table className="tbl"><thead><tr><th>연도</th><th>매출 계획(억)</th><th>실적(억)</th><th>달성률</th><th>가동률(목표 99.9%)</th><th>신규 고객사</th></tr></thead><tbody>{tg.d.items.map((x) => <tr key={x.year}>
+          <td>{x.year}{x.in_progress ? " (11월까지)" : ""}</td><td>{f1(x.revenue_plan)}</td><td>{f1(x.revenue_actual)}</td><td><b style={{ color: x.revenue_attain < .95 ? "var(--warn)" : "var(--ok)" }}>{Math.round(x.revenue_attain * 100)}%{x.revenue_attain < .95 ? " 미달" : ""}</b></td>
+          <td>{x.uptime_actual}% {x.uptime_ok ? "달성" : "미달"}</td><td>{x.new_customers}곳</td></tr>)}</tbody></table></Card>}</section>
+      {fin.bad ? <Card kind="flat"><p className="small muted">손익·현금·부서 예산은 <b>경영진과 경영지원·경영기획 담당</b>, 부서 예산은 해당 본부장만 볼 수 있어요. 지금 계정에는 권한이 없어요. 권한은 사내 시스템이 계정마다 확인해요.</p></Card> : !fin.d ? <Skeletons /> : <>
+        <section><h2>손익과 현금</h2><Card><div className="stack">
+          <div className="row wrap small"><span>현금 <b>{f1(fin.d.runway.cash)}억원</b></span><span>·</span><span>월 소진 <b>{f1(fin.d.runway.monthly_burn)}억원</b></span><span>·</span><span>런웨이 <b>{fin.d.runway.months ? `약 ${Math.round(fin.d.runway.months)}개월` : "—"}</b></span></div>
+          <div className="pl" role="img" aria-label="연도별 매출과 비용">{fin.d.years.map((y) => <div key={y.year}><div className="pl-bars"><span className="pl-rev" style={{ height: `${(y.revenue / maxRev) * 100}%` }} title={`매출 ${f1(y.revenue)}억`} /><span className="pl-cost" style={{ height: `${(y.cost / maxRev) * 100}%` }} title={`비용 ${f1(y.cost)}억`} /></div><span className="small">{y.year}</span></div>)}</div>
+          <p className="small muted">파랑은 매출, 회색은 비용이에요. 투자 유치: {fin.d.funding.filter((x) => x.round !== "창업 자본").map((x) => `${x.month} ${x.round} ${x.eok}억`).join(" · ")}</p>
+          <table className="tbl"><thead><tr><th>연도</th><th>매출</th><th>비용</th><th>손익</th><th>연말 현금</th></tr></thead><tbody>{fin.d.years.map((y) => <tr key={y.year}><td>{y.year}{y.in_progress ? " (11월까지)" : ""}</td><td>{f1(y.revenue)}</td><td>{f1(y.cost)}</td><td style={{ color: y.profit < 0 ? "var(--danger)" : undefined }}>{y.profit < 0 ? "−" : ""}{f1(Math.abs(y.profit))}</td><td>{f1(y.cash)}</td></tr>)}</tbody></table>
+          <button className="btn quiet sm" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? "분기별 보기 접기" : "분기별 보기"}</button>
+          {open && <table className="tbl"><thead><tr><th>분기</th><th>매출</th><th>인건비</th><th>그 밖의 비용</th><th>손익</th><th>현금</th></tr></thead><tbody>{fin.d.quarters.map((q) => <tr key={q.label}><td>{q.label}</td><td>{f1(q.revenue)}</td><td>{f1(q.payroll)}</td><td>{f1(q.cost - q.payroll)}</td><td>{q.profit < 0 ? "−" : ""}{f1(Math.abs(q.profit))}</td><td>{f1(q.cash)}</td></tr>)}</tbody></table>}
+        </div></Card></section></>}
+      {bud.d && <section><h2>{bud.d.scope === "all" ? "2026 부서별 예산" : "우리 본부 예산"}</h2><Card kind="flat"><div className="stack" style={{ gap: 14 }}>
+        <p className="small muted">막대는 지금까지 쓴 비율, 세로선은 시간이 지난 비율(올해의 {Math.round((bud.d.items[0].used / bud.d.items[0].pace) * 100)}%)이에요. 막대가 선을 넘으면 계획보다 빨리 쓰는 중이라는 뜻이고, 담당자에게 알림이 가요.</p>
+        {bud.d.items.map((b) => <div key={b.dept}><div className="row wrap"><b className="grow">{b.dept}</b>{b.over_pace && <Badge kind="warn">페이스 초과</Badge>}<span className="small muted">{f1(b.actual)} / {f1(b.budget)}억 · {Math.round(b.used * 100)}%</span></div>
+          <div className="progress tickbar" role="progressbar" aria-valuenow={Math.round(b.used * 100)} aria-valuemax={100} aria-label={`${b.dept} 예산 소진`}><i style={{ width: `${Math.min(100, b.used * 100)}%`, background: b.over_pace ? "var(--warn)" : undefined }} /><span className="tick" style={{ left: `${(b.used / b.pace) * 100}%` }} aria-hidden="true" /></div></div>)}
+      </div></Card></section>}
+    </div>
+  );
+}
+
 function Calendar({ s }: { s: Session }) {
   const [year, setYear] = useState(2026);
   const r = useGet<{ today: string; items: CalEvent[] }>(s, `/company/calendar?year=${year}`);
@@ -131,12 +160,12 @@ function Calendar({ s }: { s: Session }) {
 
 export default function Company({ s }: { s: Session }) {
   const [tab, setTab] = useState("home");
-  const T = [["home", "개요·연혁"], ["parties", "고객·거래처"], ["wiki", "위키"], ["years", "연도별 기록"], ["gloss", "용어집"], ["cal", "달력"]];
+  const T = [["home", "개요·연혁"], ["parties", "고객·거래처"], ["wiki", "위키"], ["years", "연도별 기록"], ["money", "재무·실적"], ["gloss", "용어집"], ["cal", "달력"]];
   return (
     <>
       <PageHead title="회사" sub="이미 운영 중인 회사의 제품, 고객, 규정, 달력이에요. 모두 가상이고, 서로 일관되게 맞물려 있어요." />
       <div className="tabs" role="tablist" data-guide="company-tabs">{T.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === "home" ? <Home s={s} /> : tab === "parties" ? <Parties s={s} onOwner={(id) => { location.hash = `#/org?person=${id}`; }} /> : tab === "wiki" ? <Wiki s={s} /> : tab === "years" ? <Years s={s} /> : tab === "gloss" ? <Glossary s={s} /> : <Calendar s={s} />}
+      {tab === "home" ? <Home s={s} /> : tab === "parties" ? <Parties s={s} onOwner={(id) => { location.hash = `#/org?person=${id}`; }} /> : tab === "wiki" ? <Wiki s={s} /> : tab === "money" ? <Money s={s} /> : tab === "years" ? <Years s={s} /> : tab === "gloss" ? <Glossary s={s} /> : <Calendar s={s} />}
     </>
   );
 }

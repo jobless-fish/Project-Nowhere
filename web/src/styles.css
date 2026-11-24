@@ -273,3 +273,9 @@ body { font-variant-numeric: tabular-nums; }
 .bars .bar { width: 100%; max-width: 56px; border-radius: 8px 8px 2px 2px; background: var(--surface-2); border: 1px solid var(--ctl-border); }
 .bars button.on .bar { background: var(--accent); border-color: var(--accent); } .bars button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 14px; } .tbl th, .tbl td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border); } .tbl th:first-child, .tbl td:first-child { text-align: left; } .tbl th { color: var(--text-2); font-weight: 600; }
+
+.pl { display: flex; align-items: flex-end; gap: 10px; height: 150px; } .pl > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+.pl-bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; width: 100%; justify-content: center; } .pl-bars span { width: 40%; max-width: 26px; border-radius: 5px 5px 1px 1px; }
+.pl-rev { background: var(--accent); } .pl-cost { background: var(--surface-2); border: 1px solid var(--ctl-border); }
+
+.tickbar { position: relative; overflow: visible; } .tickbar .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); border-radius: 1px; }

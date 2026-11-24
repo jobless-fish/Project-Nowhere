@@ -150,6 +150,14 @@ def _arr_at(buyers: list, d: date) -> float:
     return round(total, 1)
 
 
+def longtail_at(d: date) -> int:
+    """Small GA/agency subscribers (self-serve plan opened with the GA market in 2022-10): the long tail beside the named accounts."""
+    if d < date(2022, 11, 1):
+        return 0
+    m = (d.year - 2022) * 12 + d.month - 10          # months since 2022-10
+    return round(560 / (1 + 2.718281828 ** (-(m - 20) / 7.5)))
+
+
 def quarters(users: dict, customers: list) -> list:
     """2019Q1 (partial) .. the quarter containing NOW (in progress)."""
     buyers = _buyers(customers)
@@ -162,7 +170,10 @@ def quarters(users: dict, customers: list) -> list:
             if date(y, q * 3 - 2, 1) > NOW:
                 break
             at = min(end, NOW)
-            arr = _arr_at(buyers, at)
+            ent = _arr_at(buyers, at)
+            lt = longtail_at(at)
+            tail = round(lt * 0.12 * max(0.5, 1 - 0.05 * (NOW - at).days / 365.25), 1)    # about 0.12 eok per subscriber per year
+            arr = round(ent + tail, 1)
             rnd = _rnd("inc", y, q)
             age = (y - FIRST_YEAR) + q / 4
             named = [p for p in POSTMORTEMS if p[0][:4] == str(y) and (int(p[0][5:7]) - 1) // 3 + 1 == q]
@@ -175,7 +186,7 @@ def quarters(users: dict, customers: list) -> list:
                 p1 = sum(1 for p in named if p[1] == "P1")   # a P1 needs several customers to hurt
             out.append({"year": y, "quarter": q, "label": f"{y}Q{q}", "end": at.isoformat(), "in_progress": end > NOW,
                         "headcount": headcount_at(users, at), "customers": custs,
-                        "arr_eok": arr, "revenue_eok": round(arr / 4, 1), "p1": p1, "p2": p2})
+                        "arr_eok": arr, "revenue_eok": round(arr / 4, 1), "enterprise_eok": round(ent / 4, 1), "longtail_eok": round(tail / 4, 1), "longtail_customers": lt, "p1": p1, "p2": p2})
     return out
 
 
