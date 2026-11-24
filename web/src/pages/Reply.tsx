@@ -10,7 +10,7 @@ export default function Reply({ uid, action, busy, onPropose, onChanged }: Props
   const [body, setBody] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [err, setErr] = useState("");
-  if (!action) return <div><button className="btn sm" onClick={onPropose} disabled={busy}>{busy ? "초안 작성 중…" : "답장 초안 만들기"}</button></div>;
+  if (!action) return <div><button className="btn sm" onClick={onPropose} disabled={busy} aria-busy={busy || undefined}>답장 초안 만들기</button></div>;
   if (action.status === "sent") return <p className="small"><Badge kind="ok">발송됨</Badge> {action.to_name}님께 {action.edited ? "수정한 내용으로" : "초안 그대로"} 보냈습니다.</p>;
   if (action.status === "rejected") return <p className="small muted">초안을 반려했습니다.</p>;
   if (action.status === "failed") return <p className="small" role="alert"><Badge kind="urgent">발송 실패</Badge> {action.note}</p>;

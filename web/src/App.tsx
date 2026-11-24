@@ -4,6 +4,7 @@ import type { Session } from "./types";
 import { Avatar, Icon } from "./ui";
 import Admin from "./pages/Admin";
 import Chat from "./pages/Chat";
+import Controls from "./pages/Controls";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import MailPage from "./pages/Mail";
@@ -29,24 +30,24 @@ export default function App() {
   if (!session) return <Login onLogin={login} />;
 
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
-    chat: <Chat s={session} />, admin: <Admin /> }[route] ?? <Home s={session} />;
+    chat: <Chat s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
   const link = (id: string, label: string, icon: Parameters<typeof Icon>[0]["n"]) => (
     <a key={id} href={`#/${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}</a>
   );
   return (
     <div className="shell">
       <aside className="side">
-        <div className="brand"><span className="mark">n</span>Nowhere</div>
+        <div className="brand">nowhere</div>
         <nav className="nav" aria-label="주 메뉴">
           {NAV.map((n) => link(n.id, n.label, n.icon))}
-          <div className="sep" /><span className="label small" style={{ color: "#8a9ab6", padding: "0 12px" }}>관리</span>
+          <div className="sep" /><span className="label">관리</span>
           {link("admin", "관리자 콘솔", "admin")}
         </nav>
         <div className="me">
           <Avatar name={session.user.name} />
-          <div style={{ minWidth: 0 }}><div className="trunc" style={{ fontWeight: 600 }}>{session.user.name}</div>
-            <div className="small trunc" style={{ color: "#92a2bd" }}>{session.user.title}</div></div>
-          <button onClick={logout} aria-label="로그아웃" title="로그아웃"><Icon n="out" /></button>
+          <div style={{ minWidth: 0 }}><div className="trunc" style={{ fontWeight: 700 }}>{session.user.name}</div>
+            <div className="small trunc muted">{session.user.title}</div></div>
+          <button className="btn quiet" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ padding: 0, minWidth: 44 }}><Icon n="out" /></button>
         </div>
       </aside>
       <main className="main">{page}</main>

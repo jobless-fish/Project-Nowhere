@@ -35,7 +35,7 @@ export const SourceChip = ({ id, sources }: { id: string; sources: Record<string
 };
 
 export const Check = ({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) => (
-  <button type="button" role="checkbox" aria-checked={on} aria-label={label} className="check" onClick={onChange}>{on && <Icon n="check" size={14} />}</button>
+  <button type="button" role="checkbox" aria-checked={on} aria-label={label} className="check" onClick={onChange}><span className="box">{on && <Icon n="check" size={14} />}</span></button>
 );
 
 export const ago = (iso: string) => {

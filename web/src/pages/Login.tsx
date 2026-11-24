@@ -15,9 +15,9 @@ export default function Login({ onLogin }: { onLogin: (s: Session) => void }) {
   };
   return (
     <div className="login"><div className="card stack" style={{ gap: 16 }}>
-      <div className="brand" style={{ fontSize: 22 }}><span className="mark">n</span>Nowhere</div>
+      <div className="brand">nowhere</div>
       <div><h1>오늘도 어디에도 없는 곳에서</h1>
-        <p className="muted" style={{ marginTop: 6 }}>가상 기업 노웨어의 업무 비서 데모입니다. 로그인할 직원을 선택하세요.</p></div>
+        <p className="muted" style={{ marginTop: 8 }}>가상 기업 노웨어의 업무 비서 데모예요. 로그인할 직원을 골라 주세요.</p></div>
       {err && <div className="banner" role="alert">{err}</div>}
       {!users && !err && <Skeletons n={4} />}
       <div className="stack" style={{ gap: 8 }}>

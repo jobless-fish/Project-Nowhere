@@ -54,9 +54,9 @@ export default function Home({ s }: { s: Session }) {
       <PageHead title="홈" />
       <div className="hero">
         <h1>{greet()}, {s.user.name}님</h1>
-        <p>출근을 기록하면 비서가 밤새 도착한 메일과 이슈를 정리해 오늘의 할일을 알려드립니다.</p>
-        <button className="btn primary" onClick={clockIn} disabled={state === "working"}>
-          <Icon n="clock" />{state === "working" ? "브리핑을 준비하는 중…" : "출근하기"}</button>
+        <p>출근을 기록하면 비서가 밤새 도착한 메일과 이슈를 읽고, 오늘 할 일을 정리해 드려요.</p>
+        <button className="btn primary" onClick={clockIn} disabled={state === "working"} aria-busy={state === "working" || undefined}>
+          <Icon n="clock" />출근하기</button>
         {state === "error" && <p role="alert" style={{ color: "#ffb4a8" }}>연결에 문제가 있습니다. 잠시 후 다시 시도해 주세요.</p>}
       </div>
     </>
