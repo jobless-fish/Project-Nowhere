@@ -22,6 +22,8 @@ def review_reason(e: Extraction) -> str | None:
         return "negative amount"
     if e.doc_type == "expense_claim" and (e.amount or 0) > EXPENSE_APPROVAL_LIMIT:
         return "amount over approval limit"
+    if e.doc_type in ("expense_claim", "purchase_request") and e.amount is None:
+        return "amount missing"   # found by the Gemini eval: such a claim must never be auto-posted
     if e.doc_type == "leave_request" and not e.date_from:
         return "leave request without dates"
     return None

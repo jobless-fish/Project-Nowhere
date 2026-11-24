@@ -75,3 +75,9 @@ def test_prompt_injection_text_is_treated_as_data(client):
 
 def test_parse_json_tolerates_fences():
     assert parse_json('x ```{"a":1}``` y') == {"a": 1}
+
+
+def test_expense_without_amount_goes_to_review(client):
+    d = client.post("/documents", json={"text": "영수증 정산 요청합니다. 금액은 첨부 참고 바랍니다."}).json()
+    assert d["status"] == "needs_review" and d["erp_ref"] is None
+    assert d["audit"][-1]["reason"] == "amount missing"
