@@ -37,10 +37,11 @@ def sh(cmd, cwd=ROOT, env=None, timeout=900):
         return 127, f"command not found: {ex}", time.time() - t
 
 
-def record(name, status, detail="", secs=0.0):
-    RESULTS.append({"stage": name, "status": status, "detail": detail.strip()[-1200:], "seconds": round(secs, 1)})
+def record(name, status, detail="", secs=0.0, keep=1200):
+    RESULTS.append({"stage": name, "status": status, "detail": detail.strip()[-keep:], "seconds": round(secs, 1)})
     icon = {"PASS": "PASS", "FAIL": "FAIL", "SKIP": "skip"}[status]
-    print(f"[{icon}] {name:<22} {secs:5.1f}s  {detail.strip().splitlines()[-1][:110] if detail.strip() else ''}", flush=True)
+    first = detail.strip().splitlines()[0][:110] if detail.strip() else ""
+    print(f"[{icon}] {name:<22} {secs:5.1f}s  {first}", flush=True)
 
 
 def last(out, pat):
@@ -69,9 +70,17 @@ def stage_deps():
 
 
 def stage_tests():
-    code, out, secs = sh([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider"], timeout=1200)
-    line = last(out, r"(\d+ (?:passed|failed)[^\n]*)")
-    record("tests", "PASS" if code == 0 else "FAIL", line or out[-300:], secs)
+    # -rfs: list failed and skipped tests by name; --tb=short: the failing assertion, so a report alone is enough to diagnose
+    code, out, secs = sh([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-rfs", "--tb=short"], timeout=1200)
+    line = last(out, r"(\d+ (?:passed|failed)[^\n]*)") or out[-300:]
+    names = [l for l in out.splitlines() if l.startswith(("FAILED ", "ERROR ", "SKIPPED"))]
+    detail = line
+    if code != 0:
+        body = out.split("=== FAILURES ===")[-1].split("=== short test summary")[0] if "=== FAILURES ===" in out else ""
+        detail = line + "\n" + "\n".join(names) + ("\n\n" + body.strip()[-1800:] if body.strip() else "")
+    elif names:
+        detail = line + "\n" + "\n".join(names)
+    record("tests", "PASS" if code == 0 else "FAIL", detail, secs, keep=3000)
 
 
 def npm(*args, cwd=WEB, timeout=900):
