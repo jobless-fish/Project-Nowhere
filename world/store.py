@@ -4,23 +4,11 @@ import random
 from datetime import datetime, timedelta
 
 DOMAIN = "nowhere.example"
+COMPANY = {"name": "노웨어", "name_en": "Nowhere", "founded": 2019, "hq": "서울 성동구 성수동", "sites": ["서울 성수 본사", "판교 R&D센터", "부산 고객지원센터"],
+           "industry": "인슈어테크 (보험사·GA 대상 업무 자동화 SaaS)", "stage": "시리즈 B", "fictional": True}
 PASSWORD = "demo1234"  # demo only
 
-USERS = [  # id, name, title, team, role
-    ("u_ceo", "최민재", "대표이사", "경영", "executive"),
-    ("u_cfo", "정유라", "CFO", "경영", "executive"),
-    ("u_cto", "박준영", "CTO", "개발", "executive"),
-    ("u_dev1", "이서연", "백엔드 개발자", "개발", "employee"),
-    ("u_dev2", "한도윤", "프론트엔드 개발자", "개발", "employee"),
-    ("u_slead", "이정호", "영업팀장", "영업", "employee"),
-    ("u_kim", "김민수", "영업 사원", "영업", "employee"),
-    ("u_sales2", "윤지아", "영업 사원", "영업", "employee"),
-    ("u_legal", "강하늘", "컴플라이언스 책임자", "컴플라이언스", "employee"),
-    ("u_comp2", "송다은", "컴플라이언스 담당", "컴플라이언스", "employee"),
-    ("u_cs1", "오세훈", "CS 팀장", "CS", "employee"),
-    ("u_cs2", "배수진", "CS 상담원", "CS", "employee"),
-    ("u_hr", "장미래", "인사 담당", "인사", "employee"),
-]
+from .people import build, org_summary  # noqa: E402  (roster lives in people.py)
 
 CHANNELS = {  # id: (name, private, member selector)
     "c_all": ("전사공지", False, "all"),
@@ -82,8 +70,9 @@ class Store:
 
     def reset(self):
         self.t0 = datetime.now()
-        self.users = {u[0]: dict(id=u[0], name=u[1], title=u[2], team=u[3], role=u[4],
-                                 email=f"{u[0].removeprefix('u_')}@{DOMAIN}") for u in USERS}
+        roster = build()
+        self.users = {p["id"]: p for p in roster}
+        self.org, _ = org_summary(roster)
         ts = lambda h: (self.t0 - timedelta(hours=h)).isoformat(timespec="seconds")
         self.mails = [dict(id=m[0], sender=m[1], external=m[6], to=m[2], subject=m[3], body=m[4], ts=ts(m[5]))
                       for m in MAILS]

@@ -3,6 +3,7 @@ import type { SourceInfo } from "./types";
 
 const P: Record<string, string> = {
   home: "M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",
+  org: "M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4",
   news: "M4 5h13v14H6a2 2 0 01-2-2V5zM17 8h3v9a2 2 0 01-2 2M8 9h5M8 13h5",
   mail: "M3 6h18v12H3zM3 7l9 7 9-7",
   chat: "M4 5h16v11H9l-5 4V5z",

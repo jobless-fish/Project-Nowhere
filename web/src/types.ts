@@ -23,3 +23,9 @@ export type Action = { id: number; todo_key: string; status: "proposed" | "block
 export type ActionStats = { sent_as_is: number; sent_edited: number; rejected: number; blocked: number; failed: number; open: number;
   acceptance_rate: number | null; usable_rate: number | null };
 export type EvalSummary = { total: number; by: Record<string, number>; new?: { todo: number; reply: number } };
+export type Person = { id: string; name: string; grade: string; position: string; job_title: string; dept: string; unit: string; team: string; location: string;
+  email: string; ext: string; manager_id: string | null; employment: string; status: string; hire_date: string };
+export type PersonDetail = Person & { chain_of_command: Person[]; direct_reports: Person[] };
+export type OrgUnit = { name: string; headcount: number; lead: Person | null };
+export type OrgDept = { key: string; name: string; location: string; headcount: number; head: Person; units: OrgUnit[] };
+export type OrgData = { company: { name: string; founded: number; hq: string; sites: string[]; industry: string; stage: string }; headcount: number; ceo: Person; departments: OrgDept[] };

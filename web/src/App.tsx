@@ -9,10 +9,11 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import MailPage from "./pages/Mail";
 import News from "./pages/News";
+import Org from "./pages/Org";
 
 const NAV = [
   { id: "home", label: "홈", icon: "home" }, { id: "news", label: "소식", icon: "news" },
-  { id: "mail", label: "메일", icon: "mail" }, { id: "chat", label: "메신저", icon: "chat" },
+  { id: "mail", label: "메일", icon: "mail" }, { id: "chat", label: "메신저", icon: "chat" }, { id: "org", label: "조직도", icon: "org" },
 ] as const;
 
 const useRoute = () => {
@@ -30,7 +31,7 @@ export default function App() {
   if (!session) return <Login onLogin={login} />;
 
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
-    chat: <Chat s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
+    chat: <Chat s={session} />, org: <Org s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
   const link = (id: string, label: string, icon: Parameters<typeof Icon>[0]["n"]) => (
     <a key={id} href={`#/${id}`} aria-current={route === id ? "page" : undefined}><Icon n={icon} />{label}</a>
   );

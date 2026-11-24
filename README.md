@@ -1,6 +1,6 @@
 # Project Nowhere (프로젝트 노웨어)
 
-[회고(Step별)](RETROSPECTIVE.md) · [실측 결과](eval/RESULTS.md) · [에이전트 규칙](AGENTS.md)
+[회고(Step별)](RETROSPECTIVE.md) · [세계관 기준 문서](world/WORLD.md) · [실측 결과](eval/RESULTS.md) · [에이전트 규칙](AGENTS.md)
 > 가상 기업 **노웨어**를 위한 LLM 업무 자동화 플랫폼: 출근 브리핑 비서 · 문서 자동 처리 · 단계적 자동화 · 평가/운영 체계
 
 구성: `app/`(비서·문서 처리 서비스) · `world/`(노웨어 사내 시스템: SSO·메일·메신저·이슈·포털·근태) · `eval/`(평가) · `tests/`
@@ -42,7 +42,8 @@ cd web && npm run dev                      # http://localhost:5173  (직원 앱 
 모든 단계: audit 로그 · llm_calls(토큰/지연/비용) 기록
 ```
 
-## 가상 기업 "노웨어(Nowhere)" — 핀테크·인슈어테크 스타트업
+## 가상 기업 "노웨어(Nowhere)"
+임직원 217명, 본부·실 9개, 팀 32개, 근무지 3곳의 조직과 사내 디렉터리(조직도·인물 검색·보고 라인)를 갖췄습니다. 자세한 설정과 앞으로 채울 항목은 [`world/WORLD.md`](world/WORLD.md)에 있습니다. — 핀테크·인슈어테크 스타트업
 실제 회사처럼 **자체 시스템들이 따로 있는 환경**(`world/`)을 만들고, AI 비서가 그 시스템에 API로 연동되게 했습니다.
 | 시스템 | 내용 |
 |---|---|

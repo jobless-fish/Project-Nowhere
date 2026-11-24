@@ -10,7 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 from .auth import current_user, sign
-from .store import CHANNELS, PASSWORD, store
+from .store import CHANNELS, COMPANY, PASSWORD, store
 
 log = logging.getLogger("world")
 
@@ -45,9 +45,49 @@ def token(b: Login):
     return {"access_token": sign(b.user_id), "expires_in": 3600}
 
 
-@sso.get("/users")  # company directory
-def directory():
-    return [{k: u[k] for k in ("id", "name", "title", "team", "role")} for u in store.users.values()]
+@sso.get("/users")  # login screen: the demo accounts by default, everyone with ?all=true
+def login_users(all: bool = False):
+    return [{k: u[k] for k in ("id", "name", "title", "team", "role")} for u in store.users.values() if all or u["featured"]]
+
+
+# ---- Company directory (org chart + people search; any signed-in employee may read) ----
+directory = APIRouter(prefix="/directory")
+PUBLIC = ("id", "name", "grade", "position", "job_title", "dept", "unit", "team", "location", "email", "ext", "manager_id", "employment", "status", "hire_date")
+
+
+def _public(p):
+    return {k: p[k] for k in PUBLIC}
+
+
+@directory.get("/org")
+def org(me=Depends(current_user)):
+    o = store.org
+    return {"company": COMPANY, "headcount": o["headcount"], "ceo": _public(store.users[o["ceo_id"]]),
+            "departments": [{**d, "head": _public(store.users[d["head_id"]]),
+                             "units": [{**u, "lead": _public(store.users[u["lead_id"]]) if u["lead_id"] else None} for u in d["units"]]}
+                            for d in o["departments"]]}
+
+
+@directory.get("/people")
+def people(q: str = "", dept: str = "", unit: str = "", limit: int = 30, offset: int = 0, me=Depends(current_user)):
+    rows = [p for p in store.users.values()
+            if (not q or q.lower() in f"{p['name']} {p['job_title']} {p['email']} {p['unit']}".lower())
+            and (not dept or p["dept"] == dept) and (not unit or p["unit"] == unit)]
+    rows.sort(key=lambda p: (p["dept_key"], p["unit"], p["position"] != "팀장", p["name"]))
+    return _page([_public(p) for p in rows], min(limit, 100), offset) | {"total": len(rows)}
+
+
+@directory.get("/people/{pid}")
+def person(pid: str, me=Depends(current_user)):
+    p = store.users.get(pid)
+    if not p:
+        raise HTTPException(404, "no such employee")
+    chain, cur = [], p
+    while cur["manager_id"]:
+        cur = store.users[cur["manager_id"]]
+        chain.append(_public(cur))
+    reports = [_public(x) for x in store.users.values() if x["manager_id"] == pid]
+    return {**_public(p), "chain_of_command": chain, "direct_reports": reports}
 
 
 # ---- Mail server ----
