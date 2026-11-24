@@ -38,6 +38,16 @@ from app import db  # noqa: E402
 from app.main import app as assistant_app  # noqa: E402
 from world.main import app as world_app  # noqa: E402
 
+# A real model (LLM_PROVIDER=openai|claude) words the colleagues' replies; with the default mock the rule-based engine answers.
+# Who may answer and the limit of 3 stay in code either way. NPC_LLM=0 turns the model off for this part only.
+if os.getenv("NPC_LLM", "1") != "0":
+    from app.llm import get_client  # noqa: E402
+    from world import npc  # noqa: E402
+    from world.npc_llm import make_hook  # noqa: E402
+    _client = get_client()
+    if getattr(_client, "provider", "mock") != "mock":
+        npc.llm_hook = make_hook(_client)
+
 DIST = Path(__file__).parent / "web" / "dist"
 
 

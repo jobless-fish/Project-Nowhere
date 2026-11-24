@@ -43,3 +43,7 @@ export const ago = (iso: string) => {
   const h = (Date.now() - new Date(iso).getTime()) / 3.6e6;
   return h < 1 ? "방금" : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`;
 };
+
+export const Failed = ({ what, onRetry }: { what: string; onRetry: () => void }) => (
+  <div className="empty" role="alert"><p>{what}을(를) 불러오지 못했어요. 서버 연결을 확인한 뒤 다시 시도해 주세요.</p><button className="btn sm" onClick={onRetry}>다시 시도</button></div>
+);

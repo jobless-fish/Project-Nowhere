@@ -95,5 +95,5 @@ def test_light_is_the_default_theme_and_dark_is_opt_in():
     assert ":root:not([data-theme=\"light\"])" not in css                         # the old 'follow the OS unless told otherwise' rule is gone
     assert 'data-theme="auto"' in css and 'data-theme="dark"' in css
     head = css.split("@media (prefers-color-scheme: dark)")[0]
-    assert "--bg: #f9f5ea" in head and "color-scheme: light" in head                # default tokens are the cream light ones
+    assert "--bg: #fcfaf3" in head and "color-scheme: light" in head                # default tokens are the cream light ones
     assert 't==="dark"||t==="auto"' in (ROOT / "web" / "index.html").read_text(encoding="utf-8")

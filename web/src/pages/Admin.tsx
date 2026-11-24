@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import type { ActionStats, AutonomyRow, Doc, EvalSummary, Metrics } from "../types";
-import { Badge, Card, Empty, PageHead, Skeletons } from "../ui";
+import { Badge, Card, Empty, PageHead, Skeletons, Failed } from "../ui";
+
+const nf = new Intl.NumberFormat("ko-KR");
+const pct0 = (v: number) => `${nf.format(Math.round(v * 100))}%`;
 
 const MODES = ["shadow", "assisted", "auto"];
 const MODE_KO: Record<string, string> = { shadow: "그림자", assisted: "보조", auto: "자동" };
@@ -17,9 +20,11 @@ const NEED = (t: string, m: string) => (m === "shadow" ? 20 : m === "assisted" ?
 
 function Autonomy() {
   const [rows, setRows] = useState<AutonomyRow[] | null>(null);
-  const load = useCallback(() => api.get<AutonomyRow[]>("/autonomy").then(setRows).catch(() => setRows([])), []);
+  const [bad, setBad] = useState(false);
+  const load = useCallback(() => { setBad(false); return api.get<AutonomyRow[]>("/autonomy").then(setRows).catch(() => setBad(true)); }, []);
   useEffect(() => { load(); }, [load]);
   const promote = async (r: AutonomyRow) => { await api.post(`/autonomy/${r.doc_type}/mode`, { mode: r.recommended_mode }); load(); };
+  if (bad) return <Failed what="자동화 단계" onRetry={load} />;
   if (!rows) return <Skeletons />;
   return (
     <div className="stack">
@@ -42,15 +47,20 @@ function Autonomy() {
 
 function Ops() {
   const [m, setM] = useState<Metrics | null>(null);
-  useEffect(() => { api.get<Metrics>("/metrics").then(setM).catch(() => {}); }, []);
+  const [bad, setBad] = useState(false);
+  const load = useCallback(() => { setBad(false); api.get<Metrics>("/metrics").then(setM).catch(() => setBad(true)); }, []);
+  useEffect(() => { load(); }, [load]);
+  if (bad) return <Failed what="운영 지표" onRetry={load} />;
   if (!m) return <Skeletons n={2} />;
-  const S = ({ v, l }: { v: string | number; l: string }) => <div className="card stat"><b>{v}</b><span>{l}</span></div>;
+  const Minor = ({ v, l }: { v: string; l: string }) => <div className="card stat minor"><b>{v}</b><span>{l}</span></div>;
   return (
     <div className="stack">
+      <p className="muted small">이 화면의 질문: <b>AI가 사람 손을 얼마나 덜어 주고, 그만큼 믿을 만한가?</b></p>
+      <div className="card stat lead"><span>자동 처리율 · 전체 문서 중 사람 확인 없이 끝난 비율</span><b>{pct0(m.auto_processed_rate)}</b></div>
       <div className="grid">
-        <S v={`${Math.round(m.auto_processed_rate * 100)}%`} l="자동 처리율" /><S v={m.llm_calls} l="LLM 호출" />
-        <S v={`${Math.round(m.llm_success_rate * 100)}%`} l="호출 성공률" /><S v={`${m.avg_latency_ms}ms`} l="평균 지연" />
-        <S v={`${m.p95_latency_ms}ms`} l="p95 지연" /><S v={`$${m.total_cost_usd}`} l="누적 비용" />
+        <Minor v={pct0(m.llm_success_rate)} l="LLM 호출 성공률" /><Minor v={`${nf.format(m.avg_latency_ms)}ms`} l="평균 지연" />
+        <Minor v={`${nf.format(m.p95_latency_ms)}ms`} l="p95 지연 (느린 5%의 기준선)" /><Minor v={nf.format(m.llm_calls)} l="LLM 호출 수" />
+        <Minor v={`$${nf.format(m.total_cost_usd)}`} l="누적 비용" />
       </div>
       <p className="small muted">프롬프트 버전 <Badge>{m.prompt_version}</Badge> · 배포 전 평가셋(eval/)으로 회귀를 확인합니다.</p>
     </div>
@@ -59,15 +69,18 @@ function Ops() {
 
 function Proposals() {
   const [st, setSt] = useState<ActionStats | null>(null);
-  useEffect(() => { api.get<ActionStats>("/assistant/actions/stats").then(setSt).catch(() => {}); }, []);
+  const [bad, setBad] = useState(false);
+  const load = useCallback(() => { setBad(false); api.get<ActionStats>("/assistant/actions/stats").then(setSt).catch(() => setBad(true)); }, []);
+  useEffect(() => { load(); }, [load]);
+  if (bad) return <Failed what="비서 제안 통계" onRetry={load} />;
   if (!st) return <Skeletons n={2} />;
-  const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
+  const pct = (v: number | null) => (v === null ? "—" : pct0(v));
   const S = ({ v, l }: { v: string | number; l: string }) => <div className="card stat"><b>{v}</b><span>{l}</span></div>;
   return (
     <div className="stack">
       <p className="muted small">비서는 초안만 만들고, 발송은 사람이 승인해야 이뤄집니다. 승인 그대로 보낸 비율이 높아질수록 이 업무는 자동화 후보가 됩니다.</p>
       <div className="grid"><S v={pct(st.acceptance_rate)} l="초안 그대로 발송" /><S v={pct(st.usable_rate)} l="수정 포함 발송" />
-        <S v={st.sent_as_is} l="그대로 발송" /><S v={st.sent_edited} l="수정 후 발송" /><S v={st.rejected} l="반려" /><S v={st.blocked} l="차단(민감 표현)" /></div>
+        <S v={nf.format(st.sent_as_is)} l="그대로 발송" /><S v={nf.format(st.sent_edited)} l="수정 후 발송" /><S v={nf.format(st.rejected)} l="반려" /><S v={nf.format(st.blocked)} l="차단(민감 표현)" /></div>
       {st.failed > 0 && <p className="small" role="alert">발송 실패 {st.failed}건이 있습니다.</p>}
     </div>
   );
@@ -79,8 +92,11 @@ const CASE_KO: Record<string, string> = { "todo:positive": "할일 · 맞았음(
 function Learning() {
   const [sm, setSm] = useState<EvalSummary | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.get<EvalSummary>("/assistant/eval/summary").then(setSm).catch(() => {}); }, []);
+  const [bad, setBad] = useState(false);
+  const load = useCallback(() => { setBad(false); api.get<EvalSummary>("/assistant/eval/summary").then(setSm).catch(() => setBad(true)); }, []);
+  useEffect(() => { load(); }, [load]);
   const harvest = async () => { setBusy(true); try { setSm(await api.post<EvalSummary>("/assistant/eval/harvest", {})); } catch { /* keep old */ } setBusy(false); };
+  if (bad) return <Failed what="학습 데이터" onRetry={load} />;
   if (!sm) return <Skeletons n={2} />;
   return (
     <div className="stack">

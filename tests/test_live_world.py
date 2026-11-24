@@ -174,3 +174,10 @@ def test_the_model_payload_only_offers_real_candidates(w, monkeypatch):
 def test_classifier():
     assert npc.classify("보고서 확인 부탁드립니다") == "request" and npc.classify("이거 어떻게 해요?") == "question"
     assert npc.classify("작업 완료했습니다") == "report" and npc.classify("점심 드실래요") == "social" and npc.classify("감사합니다") == "thanks"
+
+
+def test_llm_reply_with_invented_number_is_dropped():
+    cands = [{"id": "a"}, {"id": "b"}]
+    raw = {"replies": [{"from": "a", "text": "기본값은 30초예요."}, {"from": "b", "text": "확인해 보고 알려드릴게요."}]}
+    assert [r["from"] for r in npc.validate_llm(raw, cands, "타임아웃 기본값이 몇 초인가요?")] == ["b"]
+    assert len(npc.validate_llm({"replies": [{"from": "a", "text": "30초예요."}]}, cands, "기본 30초 맞나요?")) == 1

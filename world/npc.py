@@ -22,7 +22,7 @@ GREET = ("안녕", "반갑", "좋은 아침")
 THANKS = ("감사", "고마")
 SOCIAL = ("점심", "식사", "커피", "회식", "퇴근", "주말", "저녁")
 REPORT = ("완료", "마쳤", "끝냈", "공유드립니다", "보고", "정리했", "올렸", "전달드립니다")
-REQUEST = ("부탁", "해 주", "해주", "요청", "가능할까", "주실 수", "주세요", "필요합니다", "확인 바랍니다")
+REQUEST = ("부탁", "해 주", "해주", "요청", "가능할까", "주실 수", "주세요", "필요합니다", "확인 바랍니다", "가능하세요", "가능하실", "시간 되", "시간 괜찮", "되시나요")
 QUESTION = ("?", "어떻게", "언제", "어디", "무엇", "뭐", "왜", "가능한가")
 
 DEPT_ANSWERS = {
@@ -142,13 +142,16 @@ def pool_ids(pool):
     return {p["id"] for p in pool}
 
 
-def validate_llm(raw, cands: list) -> list:
+def validate_llm(raw, cands: list, source: str | None = None) -> list:
+    """`source` = text the model was shown; a reply with a number that is not in it is an invented fact and is dropped."""
     ids = {c["id"] for c in cands}
     out, seen = [], set()
     for r in (raw or {}).get("replies", []) if isinstance(raw, dict) else []:
         if not isinstance(r, dict) or r.get("from") not in ids or r["from"] in seen:
             continue
         txt = URL.sub("", str(r.get("text", ""))).strip()[:220]
+        if source is not None and any(n not in source for n in re.findall(r"\d+", txt)):
+            continue
         if txt:
             seen.add(r["from"])
             out.append({"from": r["from"], "text": txt, "followup": False})
@@ -160,6 +163,13 @@ def _enqueue(store, plans, make):
     for i, p in enumerate(plans[:MAX_REPLIES]):
         t += (2.0 + 0.05 * len(p["text"]) + 0.8 * i) * _scale()
         store.pending.append({"due": t, **make(p)})
+
+
+def build_payload(kind: str, sender: dict, cands: list, text: str, subject: str = "", history=None) -> dict:
+    """What the language model is shown. Candidates were chosen by code; the model may only pick among them and word the reply."""
+    return {"kind": kind, "sender": {"name": sender["name"], "title": sender["title"], "dept": sender["dept"]}, "text": text, "subject": subject,
+            "history": history or [], "max_replies": MAX_REPLIES,
+            "candidates": [{"id": c["id"], "name": c["name"], "title": c["title"], "dept": c["dept"], "position": c["position"], "formal": formal(c)} for c in cands]}
 
 
 def respond(store, kind: str, sender: dict, pool: list, text: str, *, subject: str = "", channel: str = "", mail_id: str = "", history=None, external=None) -> int:
@@ -185,13 +195,11 @@ def respond(store, kind: str, sender: dict, pool: list, text: str, *, subject: s
         return len(plans)
 
     cands = candidates(store, sender, pool, text, _rnd(*seed))
-    payload = {"kind": kind, "sender": {"name": sender["name"], "title": sender["title"], "dept": sender["dept"]}, "text": text, "subject": subject,
-               "history": history or [], "max_replies": MAX_REPLIES,
-               "candidates": [{"id": c["id"], "name": c["name"], "title": c["title"], "dept": c["dept"], "position": c["position"], "formal": formal(c)} for c in cands]}
+    payload = build_payload(kind, sender, cands, text, subject, history)
 
     def work():
         try:
-            got = validate_llm(llm_hook(payload), cands)
+            got = validate_llm(llm_hook(payload), cands, text + " " + subject + " " + " ".join(h["text"] for h in payload["history"]))
         except Exception:
             got = []
         if not got:

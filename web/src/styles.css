@@ -256,3 +256,8 @@ a.btn { text-decoration: none; } .pbtn { border: 1px solid var(--border); cursor
 .tabs button[aria-selected="true"] { background: var(--surface); box-shadow: var(--shadow-btn); }
 input, textarea, select { background: var(--surface); box-shadow: inset 2px 2px 5px var(--sh-d), inset -2px -2px 5px var(--sh-l); }
 .picker-box { background: var(--surface); box-shadow: inset 2px 2px 5px var(--sh-d), inset -2px -2px 5px var(--sh-l); }
+
+/* Numbers: fixed-width digits so tables and metrics do not jitter; one lead metric per screen, the rest quieter (Few: hierarchy over equal cards). */
+body { font-variant-numeric: tabular-nums; }
+.stat.lead b { font-size: 44px; line-height: 1.1; color: var(--accent); } .stat.minor { padding: 14px 16px; } .stat.minor b { font-size: 20px; }
+.empty button { margin-top: 12px; }
