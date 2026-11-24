@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS outcomes(
 CREATE TABLE IF NOT EXISTS attendance(user_id TEXT, day TEXT, clock_in_at TEXT, PRIMARY KEY(user_id, day));
 CREATE TABLE IF NOT EXISTS briefings(user_id TEXT, day TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id, day));
 CREATE TABLE IF NOT EXISTS todo_feedback(user_id TEXT, day TEXT, todo_key TEXT, value TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id, day, todo_key));
+CREATE TABLE IF NOT EXISTS actions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, day TEXT, todo_key TEXT, source_id TEXT, kind TEXT,
+  to_ref TEXT, to_name TEXT, external INTEGER, draft_subject TEXT, draft_body TEXT, final_subject TEXT, final_body TEXT,
+  status TEXT, edited INTEGER DEFAULT 0, note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, decided_at TEXT
+);
 CREATE TABLE IF NOT EXISTS erp_records(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP

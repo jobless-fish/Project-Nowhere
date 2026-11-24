@@ -50,7 +50,8 @@ class WorldSource:
         mine, items = [user.id], []
         for m in self._paged(user, "/mail/inbox", hours):
             items.append(Item(f"mail-{m['id']}", "mail", m["subject"], m["body"], m["from"]["name"],
-                              self._hours(m["ts"]), mine, external=m["external"]))
+                              self._hours(m["ts"]), mine, external=m["external"],
+                              reply_to=(f"user:{m['from']['id']}" if m["from"]["id"] else f"ext:{m['from']['email']}")))
         for i in self._get(user, "/tracker/issues", hours=max(hours, 48))["items"]:
             items.append(Item(f"iss-{i['id']}", "issue", i["title"], i["body"], i["key"], self._hours(i["ts"]),
                               mine, assignee=i["assignee"]))
@@ -63,6 +64,15 @@ class WorldSource:
                 items.append(Item(f"msg-{m['id']}", "chat", f"#{ch['name']}: {m['text'][:30]}", m["text"],
                                   m["author"]["name"], self._hours(m["ts"]), mine))
         return [i for i in items if i.hours_ago <= max(hours, 72)]
+
+    def send_mail(self, user: User, reply_to: str, subject: str, body: str) -> str:
+        """Sends AS the user (their own token). The assistant has no mailbox identity of its own."""
+        kind, _, ref = reply_to.partition(":")
+        payload = {"to": [ref] if kind == "user" else [], "to_external": [ref] if kind == "ext" else [],
+                   "subject": subject, "body": body}
+        r = self.http.post("/mail/send", json=payload, headers=self._headers(user))
+        r.raise_for_status()
+        return r.json()["id"]
 
     def gold(self, user_id: str) -> set:
         from world.store import GOLD

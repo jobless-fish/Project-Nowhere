@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from .. import db
 from ..llm import get_client
+from . import actions
 from .briefing import build_briefing, build_digest
 from .sources import get_source
 
@@ -110,3 +111,55 @@ def feedback_list(user_id: str):
     with db.conn() as c:
         return {r["todo_key"]: r["value"] for r in c.execute(
             "SELECT todo_key, value FROM todo_feedback WHERE user_id=? AND day=?", (user_id, _today()))}
+
+
+class Propose(BaseModel):
+    user_id: str
+    todo_key: str
+
+
+class Decision(BaseModel):
+    user_id: str
+    approve: bool
+    subject: str | None = None
+    body: str | None = None
+    confirm_external: bool = False
+
+
+@router.post("/actions/propose", status_code=201)
+def propose_action(b: Propose):
+    user = _user(b.user_id)
+    with db.conn() as c:
+        row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user.id, _today())).fetchone()
+    if not row:
+        raise HTTPException(404, "not clocked in yet")
+    try:
+        return actions.propose(user, json.loads(row[0]), b.todo_key, get_source(), get_client())
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@router.get("/actions")
+def list_actions(user_id: str):
+    _user(user_id)
+    return actions.list_today(user_id)
+
+
+@router.get("/actions/stats")
+def action_stats():
+    return actions.stats()
+
+
+@router.post("/actions/{aid}/decision")
+def decide_action(aid: int, b: Decision):
+    user = _user(b.user_id)
+    try:
+        return actions.decide(user, aid, b.approve, b.subject, b.body, b.confirm_external, get_source())
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))

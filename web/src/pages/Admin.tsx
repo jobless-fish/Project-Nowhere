@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import type { AutonomyRow, Doc, Metrics } from "../types";
+import type { ActionStats, AutonomyRow, Doc, Metrics } from "../types";
 import { Badge, Card, Empty, PageHead, Skeletons } from "../ui";
 
 const MODES = ["shadow", "assisted", "auto"];
@@ -50,6 +50,22 @@ function Ops() {
   );
 }
 
+function Proposals() {
+  const [st, setSt] = useState<ActionStats | null>(null);
+  useEffect(() => { api.get<ActionStats>("/assistant/actions/stats").then(setSt).catch(() => {}); }, []);
+  if (!st) return <Skeletons n={2} />;
+  const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
+  const S = ({ v, l }: { v: string | number; l: string }) => <div className="card stat"><b>{v}</b><span>{l}</span></div>;
+  return (
+    <div className="stack">
+      <p className="muted small">비서는 초안만 만들고, 발송은 사람이 승인해야 이뤄집니다. 승인 그대로 보낸 비율이 높아질수록 이 업무는 자동화 후보가 됩니다.</p>
+      <div className="grid"><S v={pct(st.acceptance_rate)} l="초안 그대로 발송" /><S v={pct(st.usable_rate)} l="수정 포함 발송" />
+        <S v={st.sent_as_is} l="그대로 발송" /><S v={st.sent_edited} l="수정 후 발송" /><S v={st.rejected} l="반려" /><S v={st.blocked} l="차단(민감 표현)" /></div>
+      {st.failed > 0 && <p className="small" role="alert">발송 실패 {st.failed}건이 있습니다.</p>}
+    </div>
+  );
+}
+
 function Docs() {
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [text, setText] = useState("");
@@ -79,12 +95,12 @@ function Docs() {
 
 export default function Admin() {
   const [tab, setTab] = useState("auto");
-  const T = [["auto", "자동화 단계"], ["ops", "운영 지표"], ["docs", "문서 처리"]];
+  const T = [["auto", "자동화 단계"], ["ops", "운영 지표"], ["docs", "문서 처리"], ["acts", "비서 제안"]];
   return (
     <>
       <PageHead title="관리자 콘솔" sub="AI 자동화의 신뢰를 측정하고 단계를 관리합니다." />
       <div className="tabs" role="tablist">{T.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === "auto" ? <Autonomy /> : tab === "ops" ? <Ops /> : <Docs />}
+      {tab === "auto" ? <Autonomy /> : tab === "ops" ? <Ops /> : tab === "acts" ? <Proposals /> : <Docs />}
     </>
   );
 }

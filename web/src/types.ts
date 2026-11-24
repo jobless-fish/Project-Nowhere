@@ -18,3 +18,7 @@ export type Metrics = { documents: Record<string, number>; auto_processed_rate: 
   avg_latency_ms: number; p95_latency_ms: number; total_cost_usd: number; prompt_version: string };
 export type Doc = { id: number; text: string; status: string; extraction: { doc_type: string; confidence: number } | null;
   erp_ref: string | null; audit: { event: string; reason?: string }[] };
+export type Action = { id: number; todo_key: string; status: "proposed" | "blocked" | "sent" | "rejected" | "failed" | "sending";
+  to_name: string; external: boolean; draft_subject: string; draft_body: string; final_subject: string | null; edited: number; note: string | null };
+export type ActionStats = { sent_as_is: number; sent_edited: number; rejected: number; blocked: number; failed: number; open: number;
+  acceptance_rate: number | null; usable_rate: number | null };

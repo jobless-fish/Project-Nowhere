@@ -77,17 +77,18 @@ def message(mid: str, me=Depends(current_user)):
 
 
 class Send(BaseModel):
-    to: list[str]
+    to: list[str] = []
+    to_external: list[str] = []
     subject: str
     body: str
 
 
 @mail.post("/send", status_code=201)
 def send(b: Send, me=Depends(current_user)):
-    if any(t not in store.users for t in b.to):
-        raise HTTPException(422, "unknown recipient")
+    if not (b.to or b.to_external) or any(t not in store.users for t in b.to):
+        raise HTTPException(422, "unknown or missing recipient")
     mid = f"s{len(store.mails) + 1}"
-    store.mails.insert(0, dict(id=mid, sender=me["id"], external=None, to=b.to, subject=b.subject, body=b.body,
+    store.mails.insert(0, dict(id=mid, sender=me["id"], external=None, to=b.to, external_to=b.to_external, subject=b.subject, body=b.body,
                                ts=datetime.now().isoformat(timespec="seconds")))
     return {"id": mid}
 

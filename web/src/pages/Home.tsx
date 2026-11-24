@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, world } from "../api";
-import type { Briefing, Session, Todo } from "../types";
+import type { Action, Briefing, Session, Todo } from "../types";
+import Reply from "./Reply";
 import { Badge, Card, Check, Icon, PageHead, Skeletons, SourceChip } from "../ui";
 
 const greet = () => { const h = new Date().getHours(); return h < 11 ? "좋은 아침입니다" : h < 18 ? "안녕하세요" : "수고 많으셨습니다"; };
@@ -10,12 +11,16 @@ export default function Home({ s }: { s: Session }) {
   const [b, setB] = useState<Briefing | null>(null);
   const [state, setState] = useState<"loading" | "idle" | "working" | "error">("loading");
   const [fb, setFb] = useState<Record<string, string>>({});
+  const [acts, setActs] = useState<Record<string, Action>>({});
+  const [drafting, setDrafting] = useState("");
   const uid = s.user.id;
 
   const load = useCallback(async () => {
     try {
       setB(await api.get<Briefing>(`/assistant/briefing?user_id=${uid}`));
       setFb(await api.get<Record<string, string>>(`/assistant/feedback?user_id=${uid}`));
+      const list = await api.get<Action[]>(`/assistant/actions?user_id=${uid}`).catch(() => [] as Action[]);
+      setActs(Object.fromEntries([...list].reverse().map((a) => [a.todo_key, a])));
       setState("idle");
     } catch (e) { if (e instanceof ApiError && e.status === 404) { setB(null); setState("idle"); } else setState("error"); }
   }, [uid]);
@@ -30,6 +35,12 @@ export default function Home({ s }: { s: Session }) {
       const r = await api.post<{ briefing: Briefing }>("/assistant/clock-in", { user_id: uid });
       setB(r.briefing); setState("idle");
     } catch { setState("error"); }
+  };
+  const propose = async (t: Todo) => {
+    setDrafting(t.key);
+    try { const a = await api.post<Action>("/assistant/actions/propose", { user_id: uid, todo_key: t.key }); setActs((m) => ({ ...m, [t.key]: a })); }
+    catch { /* not a mail todo or already handled */ }
+    setDrafting("");
   };
   const mark = async (t: Todo, value: string) => {
     const next = fb[t.key] === value ? "" : value;
@@ -66,6 +77,8 @@ export default function Home({ s }: { s: Session }) {
           </div>
           <p className="small muted">{t.reason}</p>
           <div className="row wrap" style={{ gap: 6 }}>{t.source_ids.map((id) => <SourceChip key={id} id={id} sources={b.sources} />)}</div>
+          {t.source_ids.some((id) => b.sources[id]?.source === "mail") &&
+            <Reply uid={uid} action={acts[t.key]} busy={drafting === t.key} onPropose={() => propose(t)} onChanged={load} />}
         </div>
         <button className="btn quiet sm" onClick={() => mark(t, "wrong")} title="이 항목은 할일이 아닙니다">관련 없음</button>
       </div>

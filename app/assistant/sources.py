@@ -27,6 +27,7 @@ class Item:
     visible_to: list
     assignee: str | None = None
     external: bool = False
+    reply_to: str | None = None   # user:<id> | ext:<email>; only for mail
 
 
 class Source(Protocol):
