@@ -1,4 +1,6 @@
 # Project Nowhere (프로젝트 노웨어)
+
+[회고(Step별)](RETROSPECTIVE.md) · [실측 결과](eval/RESULTS.md) · [에이전트 규칙](AGENTS.md)
 > 가상 기업 **노웨어**를 위한 LLM 업무 자동화 플랫폼: 출근 브리핑 비서 · 문서 자동 처리 · 단계적 자동화 · 평가/운영 체계
 
 구성: `app/`(비서·문서 처리 서비스) · `world/`(노웨어 사내 시스템: SSO·메일·메신저·이슈·포털·근태) · `eval/`(평가) · `tests/`
