@@ -9,3 +9,9 @@ PRICE_OUT = float(os.getenv("PRICE_OUT_PER_MTOK", "15"))
 # Below this confidence a document goes to human review instead of auto-processing.
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.75"))
 PROMPT_VERSION = os.getenv("PROMPT_VERSION", "v2")
+# Autonomy ladder: shadow (AI only suggests) -> assisted (human approves every item) -> auto
+DEFAULT_MODE = os.getenv("DEFAULT_MODE", "shadow")
+SAMPLE_RATE = float(os.getenv("AUDIT_SAMPLE_RATE", "0.1"))  # share of auto items still sent to a human
+PROMOTE_SHADOW_N, PROMOTE_SHADOW_LB = 20, 0.85      # shadow -> assisted
+PROMOTE_ASSIST_N, PROMOTE_ASSIST_LB = 30, 0.95      # assisted -> auto
+DEMOTE_LB = 0.90                                    # auto -> assisted when recent outcomes fall below

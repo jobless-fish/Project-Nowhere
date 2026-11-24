@@ -19,6 +19,8 @@ def main() -> int:
     args = ap.parse_args()
 
     os.environ.setdefault("DOCFLOW_DB", str(Path(tempfile.mkdtemp()) / "eval.db"))
+    os.environ.setdefault("DEFAULT_MODE", "auto")
+    os.environ.setdefault("AUDIT_SAMPLE_RATE", "0")
     if args.prompt:
         os.environ["PROMPT_VERSION"] = args.prompt
     from app import config, db, pipeline  # imported after env is set

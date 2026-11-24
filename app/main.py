@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from . import config, db, pipeline
+from . import autonomy, config, db, pipeline
 from .schemas import SubmitIn
 
 
@@ -78,6 +78,44 @@ def review(doc_id: int, body: ReviewIn):
     except ValueError as e:
         raise HTTPException(409, str(e))
     return {"result": result, "document": get_document(doc_id)}
+
+
+class LabelIn(BaseModel):
+    actual: dict
+    reviewer: str = "reviewer"
+
+
+@app.post("/documents/{doc_id}/label", dependencies=[Depends(auth)])
+def label(doc_id: int, body: LabelIn):
+    try:
+        return {"agree": pipeline.label(doc_id, body.actual, body.reviewer)}
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+
+
+DOC_TYPES = ["expense_claim", "leave_request", "purchase_request", "inquiry"]
+
+
+@app.get("/autonomy", dependencies=[Depends(auth)])
+def autonomy_status():
+    return autonomy.evaluate(DOC_TYPES)
+
+
+class ModeIn(BaseModel):
+    mode: str
+
+
+@app.post("/autonomy/{doc_type}/mode", dependencies=[Depends(auth)])
+def set_mode(doc_type: str, body: ModeIn):
+    if doc_type not in DOC_TYPES:
+        raise HTTPException(404, "unknown doc_type")
+    try:
+        autonomy.set_mode(doc_type, body.mode)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return autonomy.status(doc_type)
 
 
 @app.get("/metrics", dependencies=[Depends(auth)])

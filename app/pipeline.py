@@ -2,7 +2,7 @@ import json
 
 from pydantic import ValidationError
 
-from . import config, db
+from . import autonomy, config, db
 from .integrations import erp
 from .llm import get_client
 from .llm.base import parse_json
@@ -80,10 +80,19 @@ def process(text: str, source: str = "api", client=None) -> int:
         return doc_id
 
     reason = review_reason(e)
+    mode = autonomy.get_mode(e.doc_type)
+    if not reason and mode == "assisted":
+        reason = "assisted mode: human approves every item"
+    elif not reason and mode == "auto" and autonomy.should_sample():
+        reason = "audit sample"
     with db.conn() as c:
         c.execute("UPDATE documents SET extraction=? WHERE id=?",
                   (e.model_dump_json(), doc_id))
         db.add_audit(c, doc_id, "extracted", doc_type=e.doc_type, confidence=e.confidence)
+        if mode == "shadow" and e.doc_type != "other":
+            c.execute("UPDATE documents SET status='shadow' WHERE id=?", (doc_id,))
+            db.add_audit(c, doc_id, "shadow_proposal", note="AI suggestion only; nothing sent to ERP")
+            return doc_id
         if reason:
             c.execute("UPDATE documents SET status='needs_review' WHERE id=?", (doc_id,))
             db.add_audit(c, doc_id, "sent_to_review", reason=reason)
@@ -113,12 +122,18 @@ def review(doc_id: int, approve: bool, actor: str, corrected: dict | None = None
         raise LookupError("document not found")
     if row["status"] != "needs_review":
         raise ValueError(f"document is {row['status']}, not awaiting review")
+    proposed = json.loads(row["extraction"])
+    mode = autonomy.get_mode(proposed["doc_type"])
     if not approve:
+        autonomy.record_outcome(doc_id, proposed["doc_type"], mode, False)
         with db.conn() as c:
             c.execute("UPDATE documents SET status='rejected' WHERE id=?", (doc_id,))
             db.add_audit(c, doc_id, "rejected", actor=actor)
         return "rejected"
-    e = Extraction(**(json.loads(row["extraction"]) | (corrected or {})))
+    e = Extraction(**(proposed | (corrected or {})))
+    if e.doc_type != "other":
+        autonomy.record_outcome(doc_id, proposed["doc_type"], mode,
+                                autonomy.agrees(proposed, corrected or {}))
     if e.doc_type == "other":
         raise ValueError("set a concrete doc_type before approving")
     with db.conn() as c:
@@ -126,3 +141,20 @@ def review(doc_id: int, approve: bool, actor: str, corrected: dict | None = None
         db.add_audit(c, doc_id, "human_corrected" if corrected else "human_approved", actor=actor)
     _dispatch(doc_id, e, actor=actor)
     return "approved"
+
+
+def label(doc_id: int, actual: dict, actor: str) -> bool:
+    """Shadow mode: a human handled the item the usual way; compare their result with the AI's proposal."""
+    with db.conn() as c:
+        row = c.execute("SELECT status, extraction FROM documents WHERE id=?", (doc_id,)).fetchone()
+    if not row:
+        raise LookupError("document not found")
+    if row["status"] != "shadow":
+        raise ValueError(f"document is {row['status']}, not a shadow item")
+    proposed = json.loads(row["extraction"])
+    ok = autonomy.agrees(proposed, actual)
+    autonomy.record_outcome(doc_id, proposed["doc_type"], "shadow", ok)
+    with db.conn() as c:
+        c.execute("UPDATE documents SET status='shadow_done' WHERE id=?", (doc_id,))
+        db.add_audit(c, doc_id, "shadow_compared", actor=actor, agree=ok, human=actual)
+    return ok
