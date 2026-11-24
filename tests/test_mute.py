@@ -93,3 +93,20 @@ def test_candidates_need_several_different_people(w):
     mute.add("b", "mail|점심 모임", "점심 모임", "mail")
     assert [x["users"] for x in mute.candidates(2)] == [2]
     assert c.get("/assistant/mutes/candidates").json()["items"][0]["title"] == "점심 모임"
+
+
+def test_issue_todos_are_only_ones_the_person_may_act_on(w):
+    """Regression (found by the one-week simulation): executives were shown every P1/P2 they could see, but the tracker lets them change only escalated ones,
+    so "작업 시작" on a todo like '분기 보고 자료 정리 (P1)' was refused forever."""
+    c, store = w
+    by_id = {i["id"]: i for i in store.issues}
+    seen = 0
+    for uid in ("u_ceo", "u_cfo", "u_cto", "u_dev1", "u_cs1"):
+        for t in briefing(c, uid)["todos"]:
+            if t["kind"] == "issue":
+                i = by_id[t["source_ids"][0].removeprefix("iss-")]
+                role = store.users[uid]["role"]
+                assert i["assignee"] == uid or (role == "executive" and i["escalated"]), (uid, i["id"])
+                assert c.post(f"/assistant/todos/{t['key']}/start", json={"user_id": uid}).status_code == 200
+                seen += 1
+    assert seen >= 3

@@ -6,6 +6,7 @@ anywhere or highlight something that is not there. Deterministic rules answer wh
 when the LLM fails.
 """
 import json
+import simclock
 import re
 import time
 from collections import defaultdict, deque
@@ -48,7 +49,7 @@ def rate_ok(user_id: str, now: float | None = None) -> bool:
 def context(user_id: str) -> dict:
     """Facts about today for this employee (counts and a few titles; titles are untrusted text from mail/issues)."""
     from datetime import datetime
-    day = datetime.now().strftime("%Y-%m-%d")
+    day = simclock.now().strftime("%Y-%m-%d")
     with db.conn() as c:
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, day)).fetchone()
         drafts = c.execute("SELECT COUNT(*) n FROM actions WHERE user_id=? AND day=? AND status='proposed'", (user_id, day)).fetchone()["n"]

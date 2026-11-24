@@ -13,7 +13,7 @@
   {"id":"m7","source":"mail","title":"개인정보 유출 의심 건 보고 및 검토 필요","body":"법무팀입니다. 고객 정보 유출 의심 건이 접수되어 대응 방향 검토 및 승인이 필요합니다.","sender":"법무팀","hours_ago":5,"visible_to":["user:u_park"],"gold_for":["u_park"]},
   {"id":"i1","source":"issue","title":"CRM 동기화 오류 (P1)","body":"CRM 고객 데이터 동기화가 새벽부터 실패 중입니다. 영업 담당 확인 및 조치 필요.","sender":"JIRA-101","hours_ago":6,"visible_to":["team:영업"],"assignee":"u_kim","gold_for":["u_kim"]},
   {"id":"i2","source":"issue","title":"로그인 화면 문구 개선","body":"로그인 화면 문구 수정 요청 건입니다.","sender":"JIRA-205","hours_ago":20,"visible_to":["team:영업"],"assignee":"u_lee"},
-  {"id":"i3","source":"issue","title":"결제 장애 재발 방지 대책 승인 대기 (P1)","body":"지난주 결제 장애 재발 방지 대책안이 임원 승인 대기 중입니다.","sender":"JIRA-190","hours_ago":10,"visible_to":["role:executive"],"gold_for":["u_park"]},
+  {"id":"i3","source":"issue","title":"결제 장애 재발 방지 대책 승인 대기 (P1)","body":"지난주 결제 장애 재발 방지 대책안이 임원 승인 대기 중입니다.","sender":"JIRA-190","hours_ago":10,"visible_to":["role:executive"],"escalated":true,"gold_for":["u_park"]},
   {"id":"s1","source":"slack","title":"#영업팀 고객사 방문 일정 공유","body":"이번 주 고객사 방문 일정을 공유합니다. 화요일 A사, 목요일 B사 방문 예정입니다.","sender":"#영업팀","hours_ago":14,"visible_to":["team:영업","role:executive"]},
   {"id":"s2","source":"slack","title":"#전사공지 11/28 사옥 정전 점검","body":"11월 28일 오전 사옥 전기 점검으로 정전됩니다. 중요 작업은 미리 저장해 주세요.","sender":"#전사공지","hours_ago":16,"visible_to":["all"]},
   {"id":"s3","source":"slack","title":"#임원회의 인수 검토 진행 상황","body":"B사 인수 검토가 2차 실사 단계에 들어갔습니다. 외부 공유 금지.","sender":"#임원회의","hours_ago":13,"visible_to":["role:executive"]},

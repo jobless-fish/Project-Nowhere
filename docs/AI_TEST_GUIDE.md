@@ -28,16 +28,17 @@ python check.py --browser
 
 | 단계 | 정상일 때 |
 |---|---|
-| tests | `157 passed` |
+| tests | `168 passed` (Windows는 리눅스 전용 테스트 1개를 건너뛰어 `167 passed, 1 skipped`) |
 | web type check / web build | 오류 없음 / `built in …` |
 | eval: documents | `field_accuracy=0.948` |
-| eval: briefing | `recall=1.00 precision=0.93 injection_leaks=0` |
+| eval: briefing | `recall=1.00 precision=1.00 injection_leaks=0` |
 | eval: feedback replay | `todo_pass_rate: 1.0` |
 | eval: colleague replies | `valid 20/20` |
 | live server | 무작위 웹훅 키 자동 생성 `True` |
 | permission probes | `24/24 probes as expected` |
 | browser sweep | `runs: 16 | runs with problems: 0` |
-| browser work flows | `19/19 flow checks passed` |
+| browser work flows | `20/20 flow checks passed` |
+| week simulation | `week simulation machinery OK` (가상 시계로 5영업일을 규칙 기반 운영자로 끝까지 돌림) |
 | browser slow-network DM | `titles seen over time: ["박준영"]` (대화가 열리기 전에 다른 채널이 깜빡이지 않음) |
 
 - 빠르게만: `python check.py --quick` (테스트 + 타입 검사, 약 40초)
@@ -92,3 +93,8 @@ python check.py --browser
 
 ## 7. 실제 모델(Gemini 등)로 시킬 때
 기본은 모의 모델이라 키가 필요 없어요. 실제 모델 반복 측정은 [`eval/RESULTS.md`](../eval/RESULTS.md)의 방법(`python -m eval.repeat npc -n 3`)을 따르고, **키는 환경 변수로만** 주세요. 무료 티어는 한도(429)에 자주 걸려요.
+
+## 8. 1주일 운영 시뮬레이션 (AI가 5영업일을 가상 시계로 운영)
+실제로 5일을 기다리지 않고, 5영업일 동안 생기는 업무를 몇십 분에 흘려보내며 AI가 여러 직원 역할로 일하고 **운영 보고서**를 쓰게 합니다.
+방법과 붙여 넣을 프롬프트: [`docs/WEEK_SIMULATION_PROMPT.md`](WEEK_SIMULATION_PROMPT.md) (서버: `python scripts/sim_server.py --port 8890`).
+`check.py`의 `week simulation` 단계는 그 장치(시계·일정·정답표)가 고장 나지 않았는지만 확인하고, 판단이 필요한 본 운영은 위 프롬프트로 합니다.

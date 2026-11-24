@@ -3,7 +3,7 @@
     python check.py                 # tests + type check + build + evaluations + live server probes   (about 2 minutes)
     python check.py --quick         # tests + type check only                                          (about 40 seconds)
     python check.py --browser       # everything above + real-browser sweep and work flows (needs Playwright browsers, see docs/AI_TEST_GUIDE.md)
-    python check.py --stage tests,probes     # only some stages (names are printed in the summary)
+    python check.py --stage tests,sim        # only some stages: tests, web, evals, live, sim
 
 Works on Windows, macOS and Linux. It never touches your data: the live check starts its own server on a free port with its own temporary
 database, and stops it afterwards. Exit code 0 only if every stage that ran passed. A machine-readable report is written to check_report.json.
@@ -127,10 +127,13 @@ def free_port():
 class LiveServer:
     """The combined server on a free port with a throw-away database inside its own temp directory (your own data is never touched)."""
 
+    def __init__(self, sim=False):
+        self.sim = sim
+
     def __enter__(self):
         self.tmp = tempfile.mkdtemp(prefix="nowhere-check-")
         self.port = free_port()
-        env = {**os.environ, "TMP": self.tmp, "TEMP": self.tmp, "TMPDIR": self.tmp, "LLM_PROVIDER": "mock", "NPC_DELAY_SCALE": "0.5", "PORT": str(self.port)}
+        env = {**os.environ, "TMP": self.tmp, "TEMP": self.tmp, "TMPDIR": self.tmp, "LLM_PROVIDER": "mock", "NPC_DELAY_SCALE": "0.5", "PORT": str(self.port), **({"NOWHERE_SIM": "1", "NPC_DELAY_SCALE": "0.2"} if self.sim else {})}
         for k in ("DOCFLOW_DB", "ASSISTANT_WEBHOOK_SECRET", "DOCFLOW_API_KEY", "WORLD_URL", "ASSISTANT_URL", "SEED_HISTORY"):
             env.pop(k, None)
         self.log = open(Path(self.tmp) / "server.log", "w", encoding="utf-8")
@@ -192,11 +195,25 @@ def stage_live(browser: bool, built: bool):
         srv.__exit__()
 
 
+def stage_sim():
+    """Machinery of the one-week simulation (clock, schedule, answer key) with a rule-driven operator; the AI-judgement run is docs/WEEK_SIMULATION_PROMPT.md."""
+    try:
+        srv = LiveServer(sim=True).__enter__()
+    except Exception as e:
+        record("week simulation", "FAIL", str(e))
+        return
+    try:
+        code, out, secs = sh([sys.executable, "scripts/sim_smoke.py", srv.base], timeout=900)
+        record("week simulation", "PASS" if code == 0 else "FAIL", last(out, r"(week simulation machinery OK)") or out[-600:], secs)
+    finally:
+        srv.__exit__()
+
+
 def main():
     ap = argparse.ArgumentParser(description="Project Nowhere: one-command project check")
     ap.add_argument("--quick", action="store_true", help="tests and type check only")
     ap.add_argument("--browser", action="store_true", help="also run real-browser sweep and work flows")
-    ap.add_argument("--stage", default="", help="comma list: tests,web,evals,live")
+    ap.add_argument("--stage", default="", help="comma list: tests,web,evals,live,sim")
     a = ap.parse_args()
     want = set(filter(None, a.stage.split(",")))
     run = lambda s: (not want and (s in ("tests", "web") or not a.quick)) or s in want
@@ -213,6 +230,8 @@ def main():
         stage_evals()
     if run("live"):
         stage_live(a.browser, built)
+    if run("sim"):
+        stage_sim()
     bad = [r for r in RESULTS if r["status"] == "FAIL"]
     skipped = [r["stage"] for r in RESULTS if r["status"] == "SKIP"]
     Path(ROOT / "check_report.json").write_text(json.dumps({"at": time.strftime("%Y-%m-%d %H:%M:%S"), "platform": sys.platform, "results": RESULTS}, ensure_ascii=False, indent=1), encoding="utf-8")

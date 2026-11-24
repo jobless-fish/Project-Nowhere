@@ -7,11 +7,13 @@ Finished work stays visible with its outcome instead of vanishing.
 """
 from datetime import datetime
 
+import simclock
+
 from .. import db
 
 
 def today() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return simclock.now().strftime("%Y-%m-%d")
 
 
 def kind_of(todo: dict) -> str:
@@ -28,7 +30,7 @@ def put(user_id: str, key: str, status: str, outcome: str, ref: str = ""):
     with db.conn() as c:
         c.execute("INSERT INTO todo_flow(user_id,day,todo_key,status,outcome,ref,updated_at) VALUES(?,?,?,?,?,?,?) "
                   "ON CONFLICT(user_id,day,todo_key) DO UPDATE SET status=excluded.status, outcome=excluded.outcome, ref=excluded.ref, updated_at=excluded.updated_at",
-                  (user_id, today(), key, status, outcome, ref, datetime.now().isoformat(timespec="seconds")))
+                  (user_id, today(), key, status, outcome, ref, simclock.now().isoformat(timespec="seconds")))
 
 
 def drop(user_id: str, key: str):

@@ -1,6 +1,7 @@
 """Nowhere (노웨어): a fictional fintech/insurtech startup. In-memory seed data for every internal system.
 Access control is enforced by the *services* (like a real company), not by the AI assistant."""
 import random
+import simclock
 import time
 from datetime import datetime, timedelta
 
@@ -80,7 +81,7 @@ class Store:
         self.reset()
 
     def reset(self):
-        self.t0 = datetime.now()
+        self.t0 = simclock.now()
         roster = build()
         self.users = {p["id"]: p for p in roster}
         self.org, _ = org_summary(roster)
@@ -119,8 +120,9 @@ class Store:
         for i in self.issues:
             i.setdefault("status", "열림")
             i.setdefault("log", [])
-        self.now = time.time                       # injectable clock (tests set delays to zero)
+        self.now = lambda: simclock.now().timestamp()     # injectable clock (tests set delays to zero); follows the simulation clock
         self.pending, self.generating, self.acks, self.seq = [], 0, set(), 0
+        self.sim = None                                # set by world/simweek.py when a simulated week is started
         self.mail_seen, self.chat_seen = {}, {}      # per user: the moment everything older counts as read
 
     def next_id(self, prefix: str) -> str:

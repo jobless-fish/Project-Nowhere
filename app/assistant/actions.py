@@ -8,6 +8,7 @@ Rules enforced in code (not in the prompt):
 - a decision can happen once (atomic claim), so double clicks never send twice
 """
 import re
+import simclock
 from datetime import datetime
 
 from .. import autonomy, db
@@ -22,7 +23,7 @@ SYSTEM = ("Write a short, polite Korean business email reply for the user. Ackno
 
 
 def _now():
-    return datetime.now().isoformat(timespec="seconds")
+    return simclock.now().isoformat(timespec="seconds")
 
 
 def draft(user, item, todo, client) -> tuple[str, str]:
@@ -41,7 +42,7 @@ def propose(user, briefing: dict, todo_key: str, source, client, internal_only: 
     todo = next((t for t in briefing["todos"] if t["key"] == todo_key), None)
     if not todo:
         raise LookupError("todo not found")
-    day = datetime.now().strftime("%Y-%m-%d")
+    day = simclock.now().strftime("%Y-%m-%d")
     with db.conn() as c:  # one open proposal per todo
         ex = c.execute("SELECT id FROM actions WHERE user_id=? AND day=? AND todo_key=? AND status IN ('proposed','blocked','sent')",
                        (user.id, day, todo_key)).fetchone()
@@ -82,7 +83,7 @@ def get(aid: int) -> dict:
 def list_today(user_id: str) -> list[dict]:
     with db.conn() as c:
         return [{**dict(r), "external": bool(r["external"])} for r in c.execute(
-            "SELECT * FROM actions WHERE user_id=? AND day=? ORDER BY id DESC", (user_id, datetime.now().strftime("%Y-%m-%d")))]
+            "SELECT * FROM actions WHERE user_id=? AND day=? ORDER BY id DESC", (user_id, simclock.now().strftime("%Y-%m-%d")))]
 
 
 def decide(user, aid: int, approve: bool, subject: str | None, body: str | None, confirm_external: bool, source) -> dict:

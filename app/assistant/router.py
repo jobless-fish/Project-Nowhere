@@ -1,4 +1,5 @@
 import hashlib
+import simclock
 import hmac
 import time
 import json
@@ -30,7 +31,7 @@ def _user(user_id: str):
 
 
 def _today():
-    return datetime.now().strftime("%Y-%m-%d")
+    return simclock.now().strftime("%Y-%m-%d")
 
 
 class ClockIn(BaseModel):
@@ -83,7 +84,7 @@ def _clock_in(user_id: str):
     user, day = _user(user_id), _today()
     with db.conn() as c:
         c.execute("INSERT OR IGNORE INTO attendance VALUES(?,?,?)",
-                  (user.id, day, datetime.now().isoformat(timespec="seconds")))
+                  (user.id, day, simclock.now().isoformat(timespec="seconds")))
         at = c.execute("SELECT clock_in_at FROM attendance WHERE user_id=? AND day=?", (user.id, day)).fetchone()[0]
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user.id, day)).fetchone()
     if row:  # clocking in twice must not regenerate (cost) or change the list the user is working from
@@ -327,6 +328,13 @@ def _run(user_id: str, key: str, fn):
         status = getattr(getattr(e, "response", None), "status_code", None)
         if status == 403:
             raise HTTPException(409, "이 이슈는 담당자만 상태를 바꿀 수 있어요. 담당자에게 메시지로 요청하거나, '관련 없음'으로 제외해 주세요.")
+        if status == 422:                                # a business rule of the company system, worded for people: pass it on
+            try:
+                detail = e.response.json().get("detail")
+            except Exception:
+                detail = None
+            if isinstance(detail, str) and any("가" <= ch <= "힣" for ch in detail):
+                raise HTTPException(409, detail)
         raise HTTPException(409 if status == 422 else 502, f"사내 시스템이 요청을 처리하지 못했어요 ({status or type(e).__name__})")
     return flow.attach(user_id, {"todos": [t]})["todos"][0]
 

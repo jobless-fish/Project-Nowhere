@@ -26,6 +26,7 @@ class Item:
     hours_ago: float
     visible_to: list
     assignee: str | None = None
+    escalated: bool = False        # raised to the executives (the only issues an executive may act on without being the assignee)
     external: bool = False
     reply_to: str | None = None   # user:<id> | ext:<email>; only for mail
     severity: str | None = None   # issues only: P1..P4

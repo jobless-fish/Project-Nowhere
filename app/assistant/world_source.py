@@ -2,6 +2,7 @@
 Permissions are enforced by those systems with the *user's own token*; the assistant never sees more
 than the user could open themselves."""
 import time
+import simclock
 from datetime import datetime
 
 from .sources import Item, User
@@ -44,7 +45,7 @@ class WorldSource:
 
     @staticmethod
     def _hours(ts: str) -> float:
-        return round((datetime.now() - datetime.fromisoformat(ts)).total_seconds() / 3600, 1)
+        return round((simclock.now() - datetime.fromisoformat(ts)).total_seconds() / 3600, 1)
 
     def fetch(self, user: User, hours: int = 24) -> list[Item]:
         mine, items = [user.id], []
@@ -54,7 +55,7 @@ class WorldSource:
                               reply_to=(f"user:{m['from']['id']}" if m["from"]["id"] else f"ext:{m['from']['email']}")))
         for i in self._get(user, "/tracker/issues", hours=max(hours, 48))["items"]:
             items.append(Item(f"iss-{i['id']}", "issue", i["title"], i["body"], i["key"], self._hours(i["ts"]),
-                              mine, assignee=i["assignee"], severity=i.get("severity"), done=i.get("status") == "해결"))
+                              mine, assignee=i["assignee"], severity=i.get("severity"), escalated=bool(i.get("escalated")), done=i.get("status") == "해결"))
         for n in self._get(user, "/portal/notices", hours=72)["items"]:
             items.append(Item(f"ntc-{n['id']}", "notice", n["title"], n["body"], "공지", self._hours(n["ts"]), mine, done=bool(n.get("acked"))))
         for p in self._get(user, "/portal/posts", hours=72)["items"]:

@@ -204,3 +204,13 @@ def test_a_reply_delivered_in_the_same_second_as_mark_seen_still_counts_as_new(w
     clock[0] = base + 0.55
     u = c.get("/mail/unread", headers=tok("u_kim")).json()
     assert u["count"] == 1 and u["latest"]["subject"].startswith("Re:")
+
+
+def test_an_executive_cannot_reopen_an_issue_the_assignee_resolved(w):
+    c, tok, _ = w
+    esc = next(i for i in store.issues if i["escalated"])
+    assignee = esc["assignee"]
+    assert c.patch(f"/tracker/issues/{esc['id']}", json={"status": "해결", "comment": "원인 수정 후 배포"}, headers=tok(assignee)).status_code == 200
+    r = c.patch(f"/tracker/issues/{esc['id']}", json={"status": "진행 중"}, headers=tok("u_ceo"))
+    assert r.status_code == 422 and "이미 해결" in r.json()["detail"] and esc["status"] == "해결"
+    assert c.patch(f"/tracker/issues/{esc['id']}", json={"status": "진행 중"}, headers=tok(assignee)).status_code == 200      # the assignee may reopen

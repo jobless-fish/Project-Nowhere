@@ -1,4 +1,5 @@
 import hashlib
+import simclock
 import hmac
 import time
 import json
@@ -18,7 +19,7 @@ log = logging.getLogger("world")
 
 
 def _since(hours: int) -> str:
-    return (datetime.now() - timedelta(hours=hours)).isoformat(timespec="seconds")
+    return (simclock.now() - timedelta(hours=hours)).isoformat(timespec="seconds")
 
 
 def _page(rows, limit, offset):
@@ -277,6 +278,8 @@ def update_issue(iid: str, b: IssueUpdate, me=Depends(current_user)):
         raise HTTPException(403, "only the assignee can change an issue")
     if b.status not in ("열림", "진행 중", "해결"):
         raise HTTPException(422, "status must be 열림, 진행 중 or 해결")
+    if i.get("status") == "해결" and i["assignee"] != me["id"]:       # an executive acting on an escalated issue must not undo the assignee's resolution (found by the week simulation)
+        raise HTTPException(422, "이미 해결된 이슈예요. 다시 열려면 담당자가 직접 바꿔야 해요.")
     if b.status == "해결" and len(b.comment.strip()) < 2:
         raise HTTPException(422, "resolving needs a short note on what was done")
     i["status"] = b.status
@@ -330,7 +333,7 @@ def notify_assistant(user_id: str):
 
 @hr.post("/clock-in")
 def clock_in(bg: BackgroundTasks, me=Depends(current_user)):
-    at = datetime.now().isoformat(timespec="seconds")
+    at = simclock.now().isoformat(timespec="seconds")
     store.attendance.setdefault((me["id"], at[:10]), at)
     bg.add_task(notify_assistant, me["id"])
     return {"user_id": me["id"], "clock_in_at": store.attendance[(me["id"], at[:10])]}
@@ -447,3 +450,48 @@ def company_calendar(days: int = 90, back: int = 7, year: int = 0, me=Depends(cu
         return {"today": _today().isoformat(), "items": arch.all_events(year, year)}
     start = _today() - __import__("datetime").timedelta(days=min(back, 60))
     return {"today": _today().isoformat(), "items": co.calendar(start, min(days, 400) + min(back, 60))}
+
+
+# ---- Simulation of a working week (only with NOWHERE_SIM=1; see world/simweek.py) ----
+from . import simweek  # noqa: E402
+
+sim = APIRouter(prefix="/sim")
+
+
+def _sim_guard():
+    if not simclock.enabled():
+        raise HTTPException(404, "simulation mode is off: start the server with NOWHERE_SIM=1")
+
+
+class Advance(BaseModel):
+    hours: float | None = None
+    to: str | None = None
+    next_day: bool = False
+
+
+@sim.get("/state")
+def sim_state():
+    return simweek.state(store)
+
+
+@sim.post("/start")
+def sim_start():
+    _sim_guard()
+    return simweek.start(store)
+
+
+@sim.post("/advance")
+def sim_advance(b: Advance):
+    _sim_guard()
+    try:
+        return simweek.advance(store, hours=b.hours, to=b.to, next_day=b.next_day)
+    except PermissionError as e:
+        raise HTTPException(409, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@sim.get("/ledger")
+def sim_ledger():
+    _sim_guard()
+    return {"items": simweek.ledger(store)}

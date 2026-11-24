@@ -89,9 +89,9 @@ def _slot(rnd):
     return {"day_back": day, "hour": h, "minute": rnd.randint(0, 59)}
 
 
-@lru_cache(maxsize=1)
-def generate():
-    rnd = random.Random(7)
+@lru_cache(maxsize=8)
+def generate(seed: int = 7):
+    rnd = random.Random(seed)
     people = build()
     by_unit: dict[str, list] = {}
     by_dept: dict[str, list] = {}
@@ -209,9 +209,9 @@ ISSUE_T = {
 }
 
 
-@lru_cache(maxsize=1)
-def generate_world():
-    rnd = random.Random(11)
+@lru_cache(maxsize=8)
+def generate_world(seed: int = 11):
+    rnd = random.Random(seed)
     people = generate()["people"]
     by_unit: dict = {}
     for p in people:
