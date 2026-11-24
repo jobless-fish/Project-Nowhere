@@ -1,0 +1,20 @@
+export type User = { id: string; name: string; title: string; team: string; role: "employee" | "executive" };
+export type Session = { user: User; token: string };
+export type Todo = { key: string; title: string; priority: "high" | "normal" | "low"; due: string | null; reason: string; source_ids: string[] };
+export type Fyi = { title: string; source_ids: string[] };
+export type SourceInfo = { title: string; source: string; sender: string };
+export type Briefing = {
+  summary: string; todos: Todo[]; fyi: Fyi[]; degraded: boolean; dropped_ungrounded: number;
+  flagged: { id: string; title: string; reason: string }[]; sources: Record<string, SourceInfo>;
+};
+export type Highlight = { title: string; summary: string; category: string; source_ids: string[] };
+export type Digest = { highlights: Highlight[]; sources: Record<string, SourceInfo> };
+export type Mail = { id: string; from: { name: string; email: string }; external: boolean; subject: string; body: string; ts: string };
+export type Channel = { id: string; name: string; private: boolean };
+export type ChatMsg = { id: string; text: string; ts: string; author: { name: string } };
+export type AutonomyRow = { doc_type: string; mode: string; samples: number; agree: number; agreement_rate: number | null;
+  lower_bound: number; recommended_mode: string; reason: string; applied?: string };
+export type Metrics = { documents: Record<string, number>; auto_processed_rate: number; llm_calls: number; llm_success_rate: number;
+  avg_latency_ms: number; p95_latency_ms: number; total_cost_usd: number; prompt_version: string };
+export type Doc = { id: number; text: string; status: string; extraction: { doc_type: string; confidence: number } | null;
+  erp_ref: string | null; audit: { event: string; reason?: string }[] };

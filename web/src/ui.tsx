@@ -1,0 +1,44 @@
+import type { ReactNode } from "react";
+import type { SourceInfo } from "./types";
+
+const P: Record<string, string> = {
+  home: "M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10",
+  news: "M4 5h13v14H6a2 2 0 01-2-2V5zM17 8h3v9a2 2 0 01-2 2M8 9h5M8 13h5",
+  mail: "M3 6h18v12H3zM3 7l9 7 9-7",
+  chat: "M4 5h16v11H9l-5 4V5z",
+  admin: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4",
+  out: "M10 4H5v16h5M15 8l4 4-4 4M9 12h10",
+  clock: "M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  check: "M5 12l4 4 10-10",
+  warn: "M12 4l10 17H2L12 4zM12 10v5M12 18v.5",
+};
+export const Icon = ({ n, size = 18 }: { n: keyof typeof P; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={P[n]} /></svg>
+);
+
+export const Avatar = ({ name }: { name: string }) => <span className="avatar" aria-hidden="true">{name.slice(0, 1)}</span>;
+export const Badge = ({ kind = "", children }: { kind?: string; children: ReactNode }) => <span className={`badge ${kind}`}>{children}</span>;
+export const Card = ({ kind = "", children }: { kind?: string; children: ReactNode }) => <section className={`card ${kind}`}>{children}</section>;
+export const PageHead = ({ title, sub }: { title: string; sub?: string }) => (
+  <header className="page-head"><h1>{title}</h1>{sub && <p>{sub}</p>}</header>
+);
+export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>;
+export const Skeletons = ({ n = 3 }: { n?: number }) => (
+  <div className="stack" aria-busy="true" aria-label="불러오는 중">{Array.from({ length: n }, (_, i) => <div key={i} className="skeleton" style={{ height: 64 }} />)}</div>
+);
+
+const SRC: Record<string, string> = { mail: "메일", issue: "이슈", notice: "공지", post: "게시판", chat: "메신저", slack: "메신저" };
+export const SourceChip = ({ id, sources }: { id: string; sources: Record<string, SourceInfo> }) => {
+  const s = sources[id];
+  return <span className="chip" title={s ? `${s.sender}` : id}><b>{SRC[s?.source] ?? "기타"}</b><span className="trunc">{s?.title ?? id}</span></span>;
+};
+
+export const Check = ({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) => (
+  <button type="button" role="checkbox" aria-checked={on} aria-label={label} className="check" onClick={onChange}>{on && <Icon n="check" size={14} />}</button>
+);
+
+export const ago = (iso: string) => {
+  const h = (Date.now() - new Date(iso).getTime()) / 3.6e6;
+  return h < 1 ? "방금" : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`;
+};

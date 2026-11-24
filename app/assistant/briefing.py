@@ -32,6 +32,13 @@ def _text(i):
     return f"{i.title} {i.body}"
 
 
+def _reason(body: str) -> str:
+    """The sentence that carries the request, not the greeting."""
+    parts = [x.strip() for x in re.split(r"(?<=[.!?])\s+|\.(?=\s|$)", body) if x.strip()]
+    pick = next((x for x in parts if any(k in x for k in ACTION)), parts[0] if parts else body)
+    return pick[:80]
+
+
 def rule_based(user, items) -> dict:
     """Deterministic fallback; also used when the LLM is unavailable (degraded mode)."""
     todos, fyi = [], []
@@ -45,7 +52,7 @@ def rule_based(user, items) -> dict:
         if acts and mine:
             m = DUE.search(t)
             todos.append({"title": i.title, "priority": "high" if any(k in t for k in URGENT) else "normal",
-                          "due": m.group(1) if m else None, "reason": i.body.split(".")[0][:70],
+                          "due": m.group(1) if m else None, "reason": _reason(i.body),
                           "source_ids": [i.id]})
         elif i.source in ("mail", "issue") and i.assignee in (None, user.id):
             fyi.append({"title": i.title, "source_ids": [i.id]})

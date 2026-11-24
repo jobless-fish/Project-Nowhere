@@ -3,6 +3,15 @@
 
 구성: `app/`(비서·문서 처리 서비스) · `world/`(노웨어 사내 시스템: SSO·메일·메신저·이슈·포털·근태) · `eval/`(평가) · `tests/`
 
+## 실행 (화면 포함)
+```bash
+pip install -r requirements.txt && (cd web && npm install)
+DEFAULT_MODE=shadow ./run_demo.sh          # 사내 시스템(:9000) + 비서(:8000)
+cd web && npm run dev                      # http://localhost:5173  (직원 앱 + 관리자 콘솔)
+```
+`web/`은 React + TypeScript(Vite) 앱입니다. 디자인 토큰(`src/styles.css`)과 공용 컴포넌트(`src/ui.tsx`)로 라이트/다크, 모바일 하단 내비를 지원합니다.
+출근하기 → 근태 시스템 → 서명된 웹훅 → 비서 브리핑 생성 흐름이 화면에서 그대로 동작합니다.
+
 ## 문서 자동 처리 (DocFlow 모듈)
 
 메일·문서 텍스트를 받아 **LLM이 분류·추출**하고, **업무 규칙(가드레일)** 을 통과하면 **ERP/HR/구매/CS 시스템에 API로 자동 연계**합니다.
