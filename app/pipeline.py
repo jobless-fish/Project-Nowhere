@@ -50,7 +50,7 @@ def extract(text: str, doc_id: int | None = None, client=None) -> Extraction:
     raise RuntimeError(last_err)
 
 
-def _log_call(doc_id, client, res, ok, err):
+def _log_call(doc_id, client, res, ok, err, prompt_version=None):
     cost = 0.0
     if res:
         cost = (res.input_tokens * config.PRICE_IN + res.output_tokens * config.PRICE_OUT) / 1e6
@@ -60,7 +60,7 @@ def _log_call(doc_id, client, res, ok, err):
         c.execute(
             "INSERT INTO llm_calls(document_id,provider,model,prompt_version,input_tokens,"
             "output_tokens,latency_ms,cost_usd,ok,error) VALUES(?,?,?,?,?,?,?,?,?,?)",
-            (doc_id, client.provider, client.model, config.PROMPT_VERSION,
+            (doc_id, client.provider, client.model, prompt_version or config.PROMPT_VERSION,
              res.input_tokens if res else 0, res.output_tokens if res else 0,
              res.latency_ms if res else 0, cost, ok, err),
         )

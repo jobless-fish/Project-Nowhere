@@ -26,6 +26,16 @@ def auth(x_api_key: str | None = Header(default=None)):
         raise HTTPException(401, "invalid API key")
 
 
+from .assistant.router import router as assistant_router  # noqa: E402
+
+app.include_router(assistant_router, dependencies=[Depends(auth)])
+
+
+@app.get("/assistant-ui")
+def assistant_ui():
+    return FileResponse(Path(__file__).parent / "static" / "assistant.html")
+
+
 def _row(r):
     d = dict(r)
     d["extraction"] = json.loads(d["extraction"]) if d["extraction"] else None
