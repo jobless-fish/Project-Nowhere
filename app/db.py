@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS actions(
   to_ref TEXT, to_name TEXT, external INTEGER, draft_subject TEXT, draft_body TEXT, final_subject TEXT, final_body TEXT,
   status TEXT, edited INTEGER DEFAULT 0, note TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, decided_at TEXT
 );
+CREATE TABLE IF NOT EXISTS eval_cases(
+  key TEXT PRIMARY KEY, kind TEXT, label TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS erp_records(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT, payload TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP

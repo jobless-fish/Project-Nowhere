@@ -22,3 +22,4 @@ export type Action = { id: number; todo_key: string; status: "proposed" | "block
   to_name: string; external: boolean; draft_subject: string; draft_body: string; final_subject: string | null; edited: number; note: string | null };
 export type ActionStats = { sent_as_is: number; sent_edited: number; rejected: number; blocked: number; failed: number; open: number;
   acceptance_rate: number | null; usable_rate: number | null };
+export type EvalSummary = { total: number; by: Record<string, number>; new?: { todo: number; reply: number } };

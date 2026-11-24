@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import type { ActionStats, AutonomyRow, Doc, Metrics } from "../types";
+import type { ActionStats, AutonomyRow, Doc, EvalSummary, Metrics } from "../types";
 import { Badge, Card, Empty, PageHead, Skeletons } from "../ui";
 
 const MODES = ["shadow", "assisted", "auto"];
@@ -66,6 +66,28 @@ function Proposals() {
   );
 }
 
+const CASE_KO: Record<string, string> = { "todo:positive": "할일 · 맞았음(완료)", "todo:negative": "할일 · 틀렸음(관련 없음)",
+  "reply:accepted": "초안 · 그대로 발송", "reply:edited": "초안 · 사람이 수정", "reply:rejected": "초안 · 반려" };
+
+function Learning() {
+  const [sm, setSm] = useState<EvalSummary | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.get<EvalSummary>("/assistant/eval/summary").then(setSm).catch(() => {}); }, []);
+  const harvest = async () => { setBusy(true); try { setSm(await api.post<EvalSummary>("/assistant/eval/harvest", {})); } catch { /* keep old */ } setBusy(false); };
+  if (!sm) return <Skeletons n={2} />;
+  return (
+    <div className="stack">
+      <p className="muted small">사용자가 누른 "관련 없음"과 초안 수정·반려는 평가 사례가 됩니다. 프롬프트나 규칙을 바꿀 때마다 이 사례로 다시 채점하고,
+        점수가 기준선보다 떨어지면 배포를 막습니다 (<code>python -m eval.feedback_eval</code>).</p>
+      <div className="row"><button className="btn primary" onClick={harvest} disabled={busy}>{busy ? "모으는 중…" : "피드백에서 평가 사례 모으기"}</button>
+        {sm.new && <span className="small muted">새 사례: 할일 {sm.new.todo}건 · 초안 {sm.new.reply}건</span>}</div>
+      {sm.total === 0 ? <Empty>아직 모은 사례가 없습니다. 홈에서 할일을 완료하거나 "관련 없음"을 누르고, 초안을 수정해 보세요.</Empty> :
+        <div className="grid">{Object.entries(sm.by).map(([k, n]) => <div key={k} className="card stat"><b>{n}</b><span>{CASE_KO[k] ?? k}</span></div>)}</div>}
+      <p className="small faint">실제 서비스에서는 사례 수집 전에 직원 동의, 개인정보 마스킹, 보관 기간 정책이 필요합니다.</p>
+    </div>
+  );
+}
+
 function Docs() {
   const [docs, setDocs] = useState<Doc[] | null>(null);
   const [text, setText] = useState("");
@@ -95,12 +117,12 @@ function Docs() {
 
 export default function Admin() {
   const [tab, setTab] = useState("auto");
-  const T = [["auto", "자동화 단계"], ["ops", "운영 지표"], ["docs", "문서 처리"], ["acts", "비서 제안"]];
+  const T = [["auto", "자동화 단계"], ["ops", "운영 지표"], ["docs", "문서 처리"], ["acts", "비서 제안"], ["learn", "학습 데이터"]];
   return (
     <>
       <PageHead title="관리자 콘솔" sub="AI 자동화의 신뢰를 측정하고 단계를 관리합니다." />
       <div className="tabs" role="tablist">{T.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === "auto" ? <Autonomy /> : tab === "ops" ? <Ops /> : tab === "acts" ? <Proposals /> : <Docs />}
+      {tab === "auto" ? <Autonomy /> : tab === "ops" ? <Ops /> : tab === "acts" ? <Proposals /> : tab === "learn" ? <Learning /> : <Docs />}
     </>
   );
 }

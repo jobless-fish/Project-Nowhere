@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from .. import db
 from ..llm import get_client
-from . import actions
+from . import actions, flywheel
 from .briefing import build_briefing, build_digest
 from .sources import get_source
 
@@ -163,3 +163,18 @@ def decide_action(aid: int, b: Decision):
         raise HTTPException(403, str(e))
     except ValueError as e:
         raise HTTPException(409, str(e))
+
+
+@router.post("/eval/harvest")
+def eval_harvest():
+    return {"new": flywheel.harvest(get_source()), **flywheel.summary()}
+
+
+@router.get("/eval/summary")
+def eval_summary():
+    return flywheel.summary()
+
+
+@router.get("/eval/export")
+def eval_export():
+    return flywheel.export()

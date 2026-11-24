@@ -11,6 +11,19 @@ jobs:
       - run: python -m pytest -q
       # Quality gate: fail the build if extraction accuracy regresses.
       - run: python -m eval.run_eval --min-acc 0.9
+        env: { LLM_PROVIDER: mock }
       - run: python -m eval.briefing_eval --world
         env: { LLM_PROVIDER: mock, MIN_RECALL: "0.8" }
+      # Replays real user feedback (todo "not relevant"/done, edited/rejected drafts); fails on regression vs eval/baseline.json
+      - run: python -m eval.feedback_eval
         env: { LLM_PROVIDER: mock }
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm ci || npm install
+        working-directory: web
+      - run: npx tsc --noEmit
+        working-directory: web
