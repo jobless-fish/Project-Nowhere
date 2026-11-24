@@ -158,7 +158,7 @@ export default function Home({ s }: { s: Session }) {
     <>
       <PageHead title={`${greet()}, ${s.user.name}님`} sub={b.summary} guide="briefing-summary" />
       <div className="stack" style={{ gap: 20 }}>
-        {b.degraded && <div className="banner" role="status"><Icon n="warn" />AI 연결 문제로 규칙 기반으로 정리했습니다. 내용이 단순할 수 있습니다.</div>}
+        {b.degraded && <div className="banner" role="status"><Icon n="warn" /><div>AI 연결 문제로 규칙 기반으로 정리했습니다. 내용이 단순할 수 있습니다.{b.degraded_reason && <div className="small" style={{ marginTop: 4 }}>이유: {b.degraded_reason.why}</div>}</div></div>}
         {b.flagged.length > 0 && <div className="banner" role="alert" data-guide="flagged"><Icon n="warn" /><div><b>보안 확인이 필요한 메시지 {b.flagged.length}건</b>
           {b.flagged.map((f) => <div key={f.id} className="small">{f.title} — {f.reason}</div>)}</div></div>}
         {urgent.length > 0 && <section data-guide="urgent"><h2>지금 처리하세요</h2><div className="stack">{urgent.map(row)}</div></section>}

@@ -5,7 +5,7 @@ export type Todo = { key: string; title: string; priority: "high" | "normal" | "
 export type Fyi = { title: string; source_ids: string[] };
 export type SourceInfo = { title: string; source: string; sender: string };
 export type Briefing = {
-  summary: string; todos: Todo[]; fyi: Fyi[]; degraded: boolean; dropped_ungrounded: number;
+  summary: string; todos: Todo[]; fyi: Fyi[]; degraded: boolean; degraded_reason?: { why: string; raw: string } | null; dropped_ungrounded: number;
   flagged: { id: string; title: string; reason: string }[]; sources: Record<string, SourceInfo>;
 };
 export type Highlight = { title: string; summary: string; category: string; source_ids: string[] };

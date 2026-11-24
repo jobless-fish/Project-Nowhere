@@ -1,11 +1,13 @@
 import hashlib
 import json
+import logging
 import re
 
 from .. import pipeline
 from ..llm.base import parse_json
 from .guard import ground, is_suspicious
 
+log = logging.getLogger(__name__)
 PV = "assistant-v2"
 
 SYSTEM = {
@@ -109,19 +111,44 @@ def _finish(raw: dict, items, flagged_ids: set) -> dict:
     return {"summary": raw.get("summary", ""), "todos": todos, "fyi": fyi, "dropped_ungrounded": d1 + d2}
 
 
+_KEY_LIKE = re.compile(r"(AIza[0-9A-Za-z_\-]{10,}|sk-[A-Za-z0-9_\-]{10,}|Bearer\s+\S+)")
+
+
+def explain_llm_failure(err: str) -> dict:
+    """Why the model could not answer, in words a person can act on. The raw text is kept short and scrubbed of anything that looks like a key."""
+    e = err or ""
+    low = e.lower()
+    if "429" in e or "too many requests" in low or "quota" in low:
+        why = "모델 요청 한도를 넘었어요(429). 잠시 뒤 다시 하거나, 한도가 더 큰 키를 쓰세요."
+    elif "401" in e or "403" in e or "unauthorized" in low or "forbidden" in low or "api key" in low:
+        why = "키가 없거나 잘못됐거나 이 모델을 쓸 권한이 없어요(401/403)."
+    elif "404" in e or "not found" in low:
+        why = "모델 이름이나 주소가 잘못됐어요(404). LLM_MODEL과 LLM_BASE_URL을 확인하세요."
+    elif "timeout" in low or "timed out" in low:
+        why = "모델 응답이 너무 느려서 시간이 초과됐어요."
+    elif "no json" in low or "jsondecode" in low or "expecting" in low:
+        why = "모델이 약속한 JSON 형식으로 답하지 않았어요."
+    elif any(c in e for c in ("500", "502", "503", "504")):
+        why = "모델 서버 쪽 오류예요(5xx). 잠시 뒤 다시 하세요."
+    else:
+        why = "모델 호출 중 알 수 없는 오류가 났어요."
+    return {"why": why, "raw": _KEY_LIKE.sub("***", e)[:200]}
+
+
 def build_briefing(user, items, client) -> dict:
     flagged = [i for i in items if is_suspicious(i)]
     flagged_ids = {i.id for i in flagged}
     safe = [i for i in items if i.id not in flagged_ids and i.source in ("mail", "issue", "notice") and not i.done]   # resolved issues / acknowledged notices are finished
-    degraded = False
+    degraded, reason = False, None
     if client.provider == "mock":
         raw = rule_based(user, safe)
     else:
         try:
             raw = _llm_json(client, SYSTEM[user.role] + "\n" + RULES,
                             f"user: {user.name} ({user.team})\nitems:\n{_payload(safe, user)}")
-        except Exception:
-            raw, degraded = rule_based(user, safe), True
+        except Exception as ex:
+            raw, degraded, reason = rule_based(user, safe), True, explain_llm_failure(str(ex))
+            log.warning("briefing for %s fell back to rules: %s | %s", user.id, reason["why"], reason["raw"])
     out = _finish(raw, safe, flagged_ids)
     # guard in code, not only in the prompt: someone else's issue is never my todo (executives see escalated items by design)
     mine = {i.id for i in safe if i.source != "issue" or _can_act_on(user, i)}
@@ -129,6 +156,7 @@ def build_briefing(user, items, client) -> dict:
     out["dropped_unassigned"] = len(out["todos"]) - len(kept)
     out["todos"] = kept
     out["degraded"] = degraded
+    out["degraded_reason"] = reason          # None when the model answered; otherwise {why: for people, raw: short and scrubbed}
     out["flagged"] = [{"id": i.id, "title": i.title, "reason": "지시문 의심 — 자동 처리에서 제외됨"} for i in flagged]
     # body/severity/mine are what "관련 없음" needs to decide whether an item may be hidden (assistant/mute.py); the body is cut short
     out["sources"] = {i.id: {"title": i.title, "source": i.source, "sender": i.sender, "body": i.body[:300], "severity": i.severity, "mine": i.assignee == user.id}
