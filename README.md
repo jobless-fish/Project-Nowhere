@@ -5,6 +5,7 @@
 
 ## 공식 사이트 (`site/`)
 가상 기업 노웨어의 소개·제품·채용 페이지(정적 HTML, 빌드 없음). 모든 페이지 상단에 가상 기업 고지가 있고, 제품 화면은 실제 앱에서 캡처했습니다.
+글꼴은 Pretendard(SIL OFL 1.1)를 `site/fonts/`에 자체 호스팅합니다(동적 서브셋이라 페이지에 필요한 글자 조각만 내려받음, 라이선스 파일 동봉). 메타 설명·Open Graph·파비콘·`sitemap.xml`·`robots.txt`가 들어 있고, 주소는 기본 Pages 주소(`jobless-fish.github.io/Project-Nowhere`)를 가정했습니다.
 로컬 확인: `python -m http.server -d site 8080`. GitHub Pages 배포: 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택하면 `site/` 변경 시 자동 배포됩니다.
 
 ## 실행 (화면 포함)

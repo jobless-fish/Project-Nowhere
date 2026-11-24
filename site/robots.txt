@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://jobless-fish.github.io/Project-Nowhere/sitemap.xml

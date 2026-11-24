@@ -13,6 +13,8 @@ Fictional company "Nowhere" (노웨어). Everything in this repo is fictional; k
 - Always verify by rendering: screenshot desktop (1200) and mobile (390), and assert `scrollWidth <= innerWidth`.
 - Avoid the "default AI look": no row of identical icon cards, no 1-2-3 step strips, no all-caps eyebrow labels, no gradient hero text,
   no purple accents. Prefer ruled lists, real product screenshots and concrete sample data over decoration.
+- Fonts: Pretendard is self-hosted in `site/fonts/` (OFL; keep `LICENSE-Pretendard-OFL.txt`, never rename or sell the font files).
+- Public site: keep canonical/OG URLs in sync with the real Pages URL; no forms that collect visitors' personal data (the company is fictional).
 - Korean text: `word-break: keep-all`; never break words mid-syllable group.
 
 ## Safety rules for the assistant code
