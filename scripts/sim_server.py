@@ -33,6 +33,14 @@ def main():
         os.environ["LLM_PROVIDER"] = "mock"
     sys.path.insert(0, str(ROOT))
     os.chdir(ROOT)
+    if a.llm:
+        if os.environ.get("LLM_PROVIDER", "mock") == "mock":
+            sys.exit("--llm needs LLM_PROVIDER (and the key) in your environment. Run  python scripts/llm_check.py  to see what is missing.")
+        print(f"Real model: LLM_PROVIDER={os.environ['LLM_PROVIDER']} model={os.environ.get('LLM_MODEL') or os.environ.get('CLAUDE_MODEL') or '(default)'}  -- briefings, drafts and colleague replies call it", flush=True)
+        os.environ.setdefault("LLM_MAX_RETRIES", "8")      # free tiers answer 429 now and then: retry with backoff instead of failing the whole step
+        os.environ.setdefault("LLM_TIMEOUT", "60")
+    else:
+        print("Mock model (no key, no cost). Add --llm to use a real model.", flush=True)
     print(f"Simulation server: http://127.0.0.1:{a.port}   (state: GET /world/sim/state, start: POST /world/sim/start)", flush=True)
     import uvicorn
     uvicorn.run("server:combined", host="127.0.0.1", port=a.port, log_level="warning")

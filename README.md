@@ -214,4 +214,4 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - 지난 점검 결과: [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
 
 ## 1주일 운영 시뮬레이션
-5영업일 동안 생기는 업무(정해진 사건 25개 + 매일 쏟아지는 배경 업무)를 가상 시계로 몇십 분에 흘려보내며 AI가 직원 역할로 운영하고 보고서를 쓰게 할 수 있어요: [`docs/WEEK_SIMULATION_PROMPT.md`](docs/WEEK_SIMULATION_PROMPT.md).
+5영업일 동안 생기는 업무(정해진 사건 25개 + 매일 쏟아지는 배경 업무)를 가상 시계로 몇십 분에 흘려보내며 AI가 직원 역할로 운영하고 보고서를 쓰게 할 수 있어요: [`docs/WEEK_SIMULATION_PROMPT.md`](docs/WEEK_SIMULATION_PROMPT.md). 실제 모델로 GPT가 파일 하나만 읽고 직접 운영하게 하려면 [`GPT_WEEK_SIMULATION.md`](GPT_WEEK_SIMULATION.md).
