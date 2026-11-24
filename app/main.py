@@ -26,9 +26,10 @@ def auth(x_api_key: str | None = Header(default=None)):
         raise HTTPException(401, "invalid API key")
 
 
-from .assistant.router import router as assistant_router  # noqa: E402
+from .assistant.router import public as assistant_public, router as assistant_router  # noqa: E402
 
 app.include_router(assistant_router, dependencies=[Depends(auth)])
+app.include_router(assistant_public)
 
 
 @app.get("/assistant-ui")

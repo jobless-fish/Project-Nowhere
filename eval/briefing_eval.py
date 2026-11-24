@@ -19,9 +19,18 @@ def main() -> int:
     from app.llm import get_client
 
     db.init()
-    src, client = get_source(), get_client()
+    if "--world" in sys.argv:  # in-process FinBridge systems (same HTTP contract as a remote deployment)
+        from fastapi.testclient import TestClient
+        from app.assistant.world_source import WorldSource
+        from world.main import app as world_app
+        src = WorldSource(TestClient(world_app))
+    else:
+        src = get_source()
+    client = get_client()
     tp = n_gold = n_todo = good = leaks = 0
     for u in src.users():
+        if not src.gold(u.id):
+            continue  # only featured users carry labels
         items = src.fetch(u, 24)
         b = build_briefing(u, items, client)
         gold = src.gold(u.id)

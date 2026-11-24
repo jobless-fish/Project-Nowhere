@@ -109,7 +109,7 @@ def build_briefing(user, items, client) -> dict:
 
 
 def build_digest(user, items, client) -> dict:
-    news = [i for i in items if i.source in ("slack", "notice", "post") and not is_suspicious(i)]
+    news = [i for i in items if i.source in ("chat", "slack", "notice", "post") and not is_suspicious(i)]
     degraded = False
 
     def fallback():

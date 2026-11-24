@@ -1,10 +1,18 @@
 services:
+  world:
+    build: .
+    command: uvicorn world.main:app --host 0.0.0.0 --port 9000
+    environment:
+      - ASSISTANT_URL=http://docflow:8000
+    ports: ["9000:9000"]
   docflow:
     build: .
     ports: ["8000:8000"]
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - DOCFLOW_API_KEY=${DOCFLOW_API_KEY:-}
+      - SOURCE=world
+      - WORLD_URL=http://world:9000
     volumes: ["docflow-data:/data"]
 volumes:
   docflow-data:

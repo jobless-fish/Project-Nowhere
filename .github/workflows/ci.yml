@@ -11,6 +11,6 @@ jobs:
       - run: python -m pytest -q
       # Quality gate: fail the build if extraction accuracy regresses.
       - run: python -m eval.run_eval --min-acc 0.9
-      - run: python -m eval.briefing_eval
+      - run: python -m eval.briefing_eval --world
         env: { LLM_PROVIDER: mock, MIN_RECALL: "0.8" }
         env: { LLM_PROVIDER: mock }

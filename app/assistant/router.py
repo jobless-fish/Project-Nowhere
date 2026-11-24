@@ -1,7 +1,10 @@
+import hashlib
+import hmac
 import json
+import os
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from .. import db
@@ -12,6 +15,7 @@ from .sources import get_source
 # NOTE: the demo trusts the user_id in the request. In production derive it from SSO/OIDC claims
 # and from the attendance system's webhook, never from client input.
 router = APIRouter(prefix="/assistant")
+public = APIRouter(prefix="/assistant")  # authenticated by HMAC signature instead of API key
 
 
 def _user(user_id: str):
@@ -36,7 +40,22 @@ def users():
 
 @router.post("/clock-in")
 def clock_in(body: ClockIn):
-    user, day = _user(body.user_id), _today()
+    return _clock_in(body.user_id)
+
+
+@public.post("/webhook/clock-in")
+async def clock_in_webhook(request: Request, x_signature: str | None = Header(default=None)):
+    """Called by the attendance system. Authenticated by HMAC over the raw body (no user session here)."""
+    raw = await request.body()
+    secret = os.getenv("ASSISTANT_WEBHOOK_SECRET", "dev-webhook").encode()
+    good = hmac.new(secret, raw, hashlib.sha256).hexdigest()
+    if not x_signature or not hmac.compare_digest(x_signature, good):
+        raise HTTPException(401, "bad signature")
+    return _clock_in(json.loads(raw)["user_id"])
+
+
+def _clock_in(user_id: str):
+    user, day = _user(user_id), _today()
     with db.conn() as c:
         c.execute("INSERT OR IGNORE INTO attendance VALUES(?,?,?)",
                   (user.id, day, datetime.now().isoformat(timespec="seconds")))

@@ -19,7 +19,7 @@ class User:
 @dataclass
 class Item:
     id: str
-    source: str          # mail | issue | slack | notice | post
+    source: str          # mail | issue | chat | slack | notice | post
     title: str
     body: str
     sender: str
@@ -57,5 +57,11 @@ class FixtureSource:
         return {r["id"] for r in self._raw if user_id in r.get("gold_for", [])}
 
 
-def get_source() -> FixtureSource:
+def get_source():
+    """SOURCE=fixture (default, offline demo) | world (FinBridge systems at WORLD_URL)."""
+    import os
+    if os.getenv("SOURCE", "fixture") == "world":
+        import httpx
+        from .world_source import WorldSource
+        return WorldSource(httpx.Client(base_url=os.getenv("WORLD_URL", "http://localhost:9000"), timeout=15))
     return FixtureSource()
