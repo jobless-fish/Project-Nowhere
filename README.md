@@ -10,7 +10,15 @@
 글꼴은 Pretendard(SIL OFL 1.1)를 `site/fonts/`에 자체 호스팅합니다(동적 서브셋이라 페이지에 필요한 글자 조각만 내려받음, 라이선스 파일 동봉). 메타 설명·Open Graph·파비콘·`sitemap.xml`·`robots.txt`가 들어 있고, 주소는 기본 Pages 주소(`jobless-fish.github.io/Project-Nowhere`)를 가정했습니다.
 로컬 확인: `python -m http.server -d site 8080`. GitHub Pages 배포: 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택하면 `site/` 변경 시 자동 배포됩니다.
 
-## 실행 (화면 포함)
+## 한 줄로 실제 서버 실행 (권장)
+```bash
+cd web && npm install && npx vite build && cd .. && pip install -r requirements.txt
+uvicorn server:combined --port 8000        # http://localhost:8000  — 앱·비서 API(/api)·사내 시스템(/world)이 한 주소에서 동작
+```
+Docker: `docker compose up --build` (Dockerfile은 위 과정을 그대로 자동화. 이 환경에는 Docker가 없어 **이미지 빌드는 직접 검증하지 못했습니다**). Render 배포용 `render.yaml`도 있으나 마찬가지로 미검증입니다.
+`tests/test_e2e_server.py`가 실제 서버를 띄워 HTTP만으로 출근 웹훅 → 브리핑 → 초안 승인 → 수신자 도착 → 권한 → 피드백 수집까지 검증합니다.
+
+## 실행 (개발용: 서버 분리 + 화면 개발 서버)
 ```bash
 pip install -r requirements.txt && (cd web && npm install)
 DEFAULT_MODE=shadow ./run_demo.sh          # 사내 시스템(:9000) + 비서(:8000)

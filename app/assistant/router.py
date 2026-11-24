@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from .. import db
@@ -53,7 +54,8 @@ async def clock_in_webhook(request: Request, x_signature: str | None = Header(de
     good = hmac.new(secret, raw, hashlib.sha256).hexdigest()
     if not x_signature or not hmac.compare_digest(x_signature, good):
         raise HTTPException(401, "bad signature")
-    return _clock_in(json.loads(raw)["user_id"])
+    # _clock_in does blocking HTTP (it may call back into this very server): never run it on the event loop
+    return await run_in_threadpool(_clock_in, json.loads(raw)["user_id"])
 
 
 def _clock_in(user_id: str):
