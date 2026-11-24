@@ -20,6 +20,8 @@ jobs:
       # Replays real user feedback (todo "not relevant"/done, edited/rejected drafts); fails on regression vs eval/baseline.json
       - run: python -m eval.feedback_eval
         env: { LLM_PROVIDER: mock }
+      # Colleague replies (rule-based engine) must keep the 3-reply cap, in-character register and refuse injection
+      - run: python -m eval.npc_eval
   web:
     runs-on: ubuntu-latest
     steps:
@@ -29,4 +31,6 @@ jobs:
       - run: npm ci || npm install
         working-directory: web
       - run: npx tsc --noEmit
+        working-directory: web
+      - run: npm run build
         working-directory: web

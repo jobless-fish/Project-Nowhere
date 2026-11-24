@@ -140,7 +140,8 @@ def main() -> int:
         print(f"  {k:9s} {agg.get(k, 0)}/{n}")
     for f in fails[:24]:
         print("  ✗", f)
-    return 0
+    # the rule-based engine must be perfect on these fixed scenarios; with a real model the numbers are reported, not gated
+    return 0 if (hook or all(agg.get(k, 0) == n for k in keys)) else 1
 
 
 if __name__ == "__main__":
