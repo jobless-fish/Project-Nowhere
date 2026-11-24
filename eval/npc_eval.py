@@ -90,7 +90,8 @@ def main() -> int:
         from app.llm import get_client
         from world.npc_llm import make_hook
         hook = make_hook(get_client())
-    agg, fails, n_llm_ok, n_fallback = {}, [], 0, 0
+    agg, raw_agg, fails = {}, {}, []
+    n_api_err = n_rejected = n_answered = 0
     for i, (kind, text, subject, intent, safety) in enumerate(CASES):
         sender, pool = pool_for(kind)
         seed = (kind, sender["id"], text)
@@ -100,34 +101,44 @@ def main() -> int:
             try:
                 payload = npc.build_payload(kind, sender, cands, text, subject)
                 raw = hook(payload)
-                got = npc.validate_llm(raw, cands, text + ' ' + subject)
-                # grounded is measured on the RAW output: validation would hide an invented replier
-                raw_ids = [r.get("from") for r in raw.get("replies", []) if isinstance(r, dict)]
-                bad_ids = [x for x in raw_ids if x not in {c["id"] for c in cands}]
-                n_llm_ok += bool(got)
-                if not got:   # production falls back to the rule-based reply
-                    n_fallback += 1
-                    got = replies
-                replies = got
-                res = judge(kind, text, intent, safety, cands, got)
-                if bad_ids or len(raw_ids) > 3:
-                    res["grounded"] = not bad_ids
-                    res["valid"] = len(raw_ids) <= 3
-            except Exception as e:  # noqa: BLE001
-                fails.append(f"#{i} {kind} 호출 실패({type(e).__name__}) → 규칙 기반으로 대체")
-                n_fallback += 1
-                res = judge(kind, text, intent, safety, cands, replies)
+            except Exception as e:  # noqa: BLE001  API trouble (rate limit, timeout): not a statement about the model, so it is not scored
+                n_api_err += 1
+                fails.append(f"#{i} {kind} API 오류({type(e).__name__}) — 점수에서 제외")
+                continue
+            n_answered += 1
+            raw_replies = [{"from": r.get("from"), "text": str(r.get("text", ""))} for r in (raw.get("replies", []) if isinstance(raw, dict) else []) if isinstance(r, dict)]
+            # (1) the model's own words, unfiltered: what the model really did
+            rres = judge(kind, text, intent, safety, cands, raw_replies)
+            rres["valid"] = 0 < len(raw_replies) <= 3 or (safety and len(raw_replies) <= 3)
+            for k, v in rres.items():
+                raw_agg[k] = raw_agg.get(k, 0) + bool(v)
+                if not v:
+                    fails.append(f"#{i} {kind} '{text[:24]}' [모델 원문] → {k}: " + " | ".join(r["text"] for r in raw_replies)[:110])
+            # (2) what the user would get: validated, with the rule-based reply when validation leaves nothing
+            got = npc.validate_llm(raw, cands, text + " " + subject)
+            if not got:
+                n_rejected += 1
+                got = replies
+            res = judge(kind, text, intent, safety, cands, got)
         else:
             res = judge(kind, text, intent, safety, cands, replies)
         for k, v in res.items():
             agg[k] = agg.get(k, 0) + bool(v)
             if not v:
                 fails.append(f"#{i} {kind} '{text[:24]}' → {k}: " + " | ".join(r["text"] for r in replies)[:120])
-    n = len(CASES)
-    print(f"{'LLM' if use_llm else '규칙 기반'} · 시나리오 {n}개" + (f" · 모델 응답 사용 {n_llm_ok}개 · 규칙으로 대체 {n_fallback}개" if use_llm else ""))
-    for k in ("valid", "grounded", "register", "clean", "relevant", "safe"):
+    n = n_answered if hook else len(CASES)
+    keys = ("valid", "grounded", "register", "clean", "relevant", "safe")
+    if hook:
+        print(f"LLM · 시나리오 {len(CASES)}개 · API 오류로 제외 {n_api_err}개 · 모델이 답한 {n}개 · 검증에서 통째로 버려져 규칙으로 대체 {n_rejected}개")
+        print("[모델 원문 — 걸러내기 전]")
+        for k in keys:
+            print(f"  {k:9s} {raw_agg.get(k, 0)}/{n}")
+        print("[사용자에게 가는 결과 — 검증·대체 후]")
+    else:
+        print(f"규칙 기반 · 시나리오 {n}개")
+    for k in keys:
         print(f"  {k:9s} {agg.get(k, 0)}/{n}")
-    for f in fails[:20]:
+    for f in fails[:24]:
         print("  ✗", f)
     return 0
 

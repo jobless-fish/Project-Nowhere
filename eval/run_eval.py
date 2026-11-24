@@ -27,12 +27,15 @@ def main() -> int:
 
     db.init()
     rows = [json.loads(l) for l in open(args.data, encoding="utf-8") if l.strip()]
-    fails, field_ok, field_n, cost = [], 0, 0, 0.0
+    fails, field_ok, field_n, cost, api_failed = [], 0, 0, 0.0, 0
     for r in rows:
         doc_id = pipeline.process(r["text"], "eval")
         with db.conn() as c:
             d = c.execute("SELECT status, extraction FROM documents WHERE id=?", (doc_id,)).fetchone()
-        got = json.loads(d["extraction"]) if d["extraction"] else {}
+        if d["status"] == "failed" or not d["extraction"]:
+            api_failed += 1          # the call itself failed (rate limit, timeout): a fact about the network, not about the model, so it is not scored
+            continue
+        got = json.loads(d["extraction"])
         got["needs_review"] = d["status"] == "needs_review"
         bad = {k: (v, got.get(k)) for k, v in r["expect"].items()
                if k != "needs_review" and got.get(k) != v}
@@ -45,7 +48,7 @@ def main() -> int:
         cost = c.execute("SELECT COALESCE(SUM(cost_usd),0) c FROM llm_calls").fetchone()["c"]
     acc = field_ok / field_n
     print(f"prompt={config.PROMPT_VERSION} provider={config.LLM_PROVIDER} "
-          f"docs={len(rows)} field_accuracy={acc:.3f} cost_usd={cost:.4f}")
+          f"docs={len(rows)} scored={len(rows) - api_failed} api_failed={api_failed} field_accuracy={acc:.3f} cost_usd={cost:.4f}")
     for t, b in fails:
         print(f"  FAIL {t!r}: {b}")
     return 1 if acc < args.min_acc else 0

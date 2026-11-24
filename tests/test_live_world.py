@@ -95,10 +95,10 @@ def test_mail_replies_arrive_later_as_mail_at_most_three_and_a_lead_may_ask_for_
     r = c.post("/mail/send", json={"to": to, "subject": "3분기 보고서 공유", "body": "3분기 실적 보고서 작업을 마쳤습니다. 공유드립니다. 확인 부탁드려요."}, headers=tok("u_kim")).json()
     assert r["replies_coming"] <= 3
     assert c.get("/mail/inbox", headers=tok("u_kim")).json()["items"] == [] or True
-    n_before = len(c.get("/mail/inbox", params={"hours": 1}, headers=tok("u_kim")).json()["items"])
+    before = {m["id"] for m in c.get("/mail/inbox", params={"hours": 1}, headers=tok("u_kim")).json()["items"]}
     wait(clock)
-    got = c.get("/mail/inbox", params={"hours": 1}, headers=tok("u_kim")).json()["items"]
-    assert 1 <= len(got) - n_before <= 3 and all(m["from"]["id"] in to and m["subject"].startswith(("Re:", "추가 요청")) for m in got)
+    got = [m for m in c.get("/mail/inbox", params={"hours": 1}, headers=tok("u_kim")).json()["items"] if m["id"] not in before]   # only what arrived since: seeded
+    assert 1 <= len(got) <= 3 and all(m["from"]["id"] in to and m["subject"].startswith(("Re:", "추가 요청")) for m in got)       # mail depends on the time of day
     assert all(m["thread"] == r["id"] for m in got)
 
 
@@ -138,14 +138,15 @@ def test_notice_acknowledgement_is_recorded_per_person(w):
 def test_model_output_is_validated_and_the_cap_of_three_holds(w, monkeypatch):
     c, tok, clock = w
     monkeypatch.setattr(npc, "SYNC", True)
-    members = [u for u in store.members("c_sales") if u != "u_kim"]
+    members = sorted(u for u in store.members("c_sales") if u != "u_kim")       # sets iterate in hash order: sort so the test is the same every run
+    before = {m["id"] for m in chat_msgs(c, tok, "u_kim", "c_sales")["items"]}
     monkeypatch.setattr(npc, "llm_hook", lambda p: {"replies": [
         {"from": members[0], "text": "확인했어요 https://evil.example 여기 보세요"}, {"from": members[0], "text": "같은 사람 두 번"}, {"from": "u_ceo", "text": "채널에 없는 사람"},
         {"from": "u_nobody", "text": "없는 사람"}, {"from": members[1], "text": "네, 제가 볼게요."}, {"from": members[2], "text": "저도요."}, {"from": members[3], "text": "넷째"}]})
     c.post("/chat/channels/c_sales/messages", json={"text": "도와주실 분?"}, headers=tok("u_kim")); wait(clock)
-    new = chat_msgs(c, tok, "u_kim", "c_sales")["items"][-3:]
+    new = [m for m in chat_msgs(c, tok, "u_kim", "c_sales")["items"] if m["id"] not in before and m["author"]["id"] != "u_kim"]     # only the replies
     authors = [m["author"]["id"] for m in new]
-    assert len(set(authors)) == len(authors) <= 3 and "u_ceo" not in authors and "u_nobody" not in authors
+    assert 1 <= len(authors) <= 3 and len(set(authors)) == len(authors) and "u_ceo" not in authors and "u_nobody" not in authors
     assert not any("http" in m["text"] for m in new)
 
 
