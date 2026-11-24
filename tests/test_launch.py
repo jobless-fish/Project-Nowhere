@@ -19,11 +19,14 @@ def port_open(p):
 
 
 def test_browser_discovery(tmp_path, monkeypatch):
-    fake = tmp_path / "chromium"
+    # the Linux search path is exercised everywhere; on Windows `which` only finds files with an executable extension (PATHEXT) and returns it
+    # in that extension's case, so the fake gets one and paths are compared case-insensitively
+    fake = tmp_path / ("chromium.exe" if sys.platform.startswith("win") else "chromium")
     fake.write_text("#!/bin/sh\n")
     fake.chmod(0o755)
+    same = lambda a, b: a is not None and os.path.normcase(a) == os.path.normcase(b)
     monkeypatch.setenv("PATH", str(tmp_path))
-    assert launch.find_browser({}, "linux") == str(fake)                                     # found on PATH
+    assert same(launch.find_browser({}, "linux"), str(fake))                                 # found on PATH
     assert launch.find_browser({"NOWHERE_BROWSER": str(fake)}, "linux") == str(fake)         # explicit choice wins
     assert launch.find_browser({"NOWHERE_BROWSER": "/no/such/browser"}, "linux") is None     # a wrong explicit choice is not silently ignored
     monkeypatch.setenv("PATH", "")
