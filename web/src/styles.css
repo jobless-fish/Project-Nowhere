@@ -22,22 +22,22 @@
 }
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
-    --bg: #14110d; --surface: #1d1914; --surface-2: #27211a; --border: #373027; --rule: #f1e8d6; --edge: rgb(255 255 255 / .06);
-    --text: #f1e8d6; --text-2: #c2b8a4; --text-3: #9b917d;
-    --accent: #6aa6ff; --accent-hover: #86b6ff; --accent-press: #a2c6ff; --on-accent: #0b1220; --accent-soft: #1b2b45; --focus: #9cc2ff;
-    --ctl-border: #9b917d;
-    --danger: #ff9a8e; --danger-soft: #3b1a15; --warn: #f2c06e; --warn-soft: #382a10; --ok: #66d49c; --ok-soft: #14301f;
-    --sh-d: rgb(0 0 0 / .55); --sh-l: rgb(255 244 220 / .045);
+    --bg: #262624; --surface: #30302e; --surface-2: #3a3a37; --border: #44433f; --rule: #55544f; --edge: rgb(255 255 255 / .045);
+    --text: #ece9df; --text-2: #c2c0b6; --text-3: #9c9a92;
+    --accent: #7ea6e6; --accent-hover: #94b6ec; --accent-press: #a9c5f1; --on-accent: #14202f; --accent-soft: #34404f; --focus: #9bbbee;
+    --ctl-border: #7d7b72;
+    --danger: #ee9488; --danger-soft: #402b28; --warn: #e3bb74; --warn-soft: #3d3321; --ok: #86c9a0; --ok-soft: #26372c;
+    --sh-d: rgb(0 0 0 / .32); --sh-l: rgb(255 255 255 / .028);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-    --bg: #14110d; --surface: #1d1914; --surface-2: #27211a; --border: #373027; --rule: #f1e8d6; --edge: rgb(255 255 255 / .06);
-    --text: #f1e8d6; --text-2: #c2b8a4; --text-3: #9b917d;
-    --accent: #6aa6ff; --accent-hover: #86b6ff; --accent-press: #a2c6ff; --on-accent: #0b1220; --accent-soft: #1b2b45; --focus: #9cc2ff;
-    --ctl-border: #9b917d;
-    --danger: #ff9a8e; --danger-soft: #3b1a15; --warn: #f2c06e; --warn-soft: #382a10; --ok: #66d49c; --ok-soft: #14301f;
-    --sh-d: rgb(0 0 0 / .55); --sh-l: rgb(255 244 220 / .045);
+    --bg: #262624; --surface: #30302e; --surface-2: #3a3a37; --border: #44433f; --rule: #55544f; --edge: rgb(255 255 255 / .045);
+    --text: #ece9df; --text-2: #c2c0b6; --text-3: #9c9a92;
+    --accent: #7ea6e6; --accent-hover: #94b6ec; --accent-press: #a9c5f1; --on-accent: #14202f; --accent-soft: #34404f; --focus: #9bbbee;
+    --ctl-border: #7d7b72;
+    --danger: #ee9488; --danger-soft: #402b28; --warn: #e3bb74; --warn-soft: #3d3321; --ok: #86c9a0; --ok-soft: #26372c;
+    --sh-d: rgb(0 0 0 / .32); --sh-l: rgb(255 255 255 / .028);
     color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -261,3 +261,9 @@ input, textarea, select { background: var(--surface); box-shadow: inset 2px 2px 
 body { font-variant-numeric: tabular-nums; }
 .stat.lead b { font-size: 44px; line-height: 1.1; color: var(--accent); } .stat.minor { padding: 14px 16px; } .stat.minor b { font-size: 20px; }
 .empty button { margin-top: 12px; }
+
+/* ===== Company page ===== */
+.timeline { list-style: none; margin: 0; padding: 0 0 0 18px; border-left: 2px solid var(--border); display: flex; flex-direction: column; gap: 16px; }
+.timeline li { display: grid; grid-template-columns: 72px 1fr; gap: 12px; position: relative; } .timeline li::before { content: ""; position: absolute; left: -24px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
+.gloss { margin: 0; display: grid; gap: 14px; } .gloss dd { margin: 2px 0 0; color: var(--text-2); }
+@media (max-width: 800px) { .timeline li { grid-template-columns: 1fr; gap: 2px; } }

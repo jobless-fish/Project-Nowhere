@@ -4,5 +4,5 @@ from fastapi import FastAPI
 from . import services as s
 
 app = FastAPI(title="Nowhere internal systems")
-for r in (s.sso, s.directory, s.mail, s.chat, s.tracker, s.portal, s.hr):
+for r in (s.sso, s.directory, s.mail, s.chat, s.tracker, s.portal, s.hr, s.company):
     app.include_router(r)

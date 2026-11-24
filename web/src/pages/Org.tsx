@@ -35,6 +35,7 @@ export default function Org({ s }: { s: Session }) {
     setSel(p); setOpen((o) => new Set(o).add(p.dept)); setUnit({ dept: p.dept, unit: p.unit });
     window.setTimeout(() => card.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50);
   }).catch(() => {}), [s]);
+  useEffect(() => { const id = new URLSearchParams(location.hash.split("?")[1] ?? "").get("person"); if (id) { void show(id); history.replaceState(null, "", "#/org"); } }, [show]);
   const toggle = (d: string) => setOpen((o) => { const n = new Set(o); if (n.has(d)) n.delete(d); else n.add(d); return n; });
   const pick = (p: Person) => { setQ(""); setShowHits(false); void show(p.id); };
   const keys = (e: React.KeyboardEvent) => {

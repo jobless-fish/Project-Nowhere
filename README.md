@@ -184,3 +184,6 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 
 ## 다이어그램
 조직도·시스템 구조·시퀀스·피드백 루프는 [`docs/diagrams/`](docs/diagrams/README.md)에 있어요.
+
+## 회사 화면
+앱의 **회사** 메뉴에서 제품·고객·연혁(개요), 고객·거래처, 규정 위키, 용어집, 달력을 볼 수 있어요. 데이터 설명은 [`world/WORLD.md`](world/WORLD.md)의 4-4.

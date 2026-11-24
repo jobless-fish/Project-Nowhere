@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import MailPage from "./pages/Mail";
 import News from "./pages/News";
 import Org from "./pages/Org";
+import Company from "./pages/Company";
 import Guide from "./guide/Guide";
 import ThemeToggle from "./theme";
 import { LiveProvider, useLive } from "./live";
@@ -17,6 +18,7 @@ import { LiveProvider, useLive } from "./live";
 const NAV = [
   { id: "home", label: "홈", icon: "home" }, { id: "news", label: "소식", icon: "news" },
   { id: "mail", label: "메일", icon: "mail" }, { id: "chat", label: "메신저", icon: "chat" }, { id: "org", label: "조직도", icon: "org" },
+  { id: "company", label: "회사", icon: "book" },
 ] as const;
 
 const useRoute = () => {
@@ -49,7 +51,7 @@ export default function App() {
   if (!session) return <><ThemeToggle /><Login onLogin={login} /></>;
 
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
-    chat: <Chat s={session} />, org: <Org s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
+    chat: <Chat s={session} />, org: <Org s={session} />, company: <Company s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
   return (
     <LiveProvider s={session}><div className="shell">
       <aside className="side">

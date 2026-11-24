@@ -329,3 +329,66 @@ def clock_in(bg: BackgroundTasks, me=Depends(current_user)):
     store.attendance.setdefault((me["id"], at[:10]), at)
     bg.add_task(notify_assistant, me["id"])
     return {"user_id": me["id"], "clock_in_at": store.attendance[(me["id"], at[:10])]}
+
+
+# ---- Company knowledge: products, customers & partners, history, glossary, wiki, calendar ----
+from datetime import date as _date  # noqa: E402
+
+from . import company as co  # noqa: E402
+from .store import COMPANY  # noqa: E402
+
+company = APIRouter(prefix="/company")
+
+
+def _today():
+    return store.t0.date() if hasattr(store, "t0") else _date.today()
+
+
+@company.get("/overview")
+def company_overview(me=Depends(current_user)):
+    return {**co.overview(store.users, _today()), "company": COMPANY}
+
+
+@company.get("/customers")
+def company_customers(q: str = "", kind: str = "", stage: str = "", me=Depends(current_user)):
+    rows = co.customers(store.users, _today())
+    ql = q.strip().lower()
+    return {"items": [c for c in rows if (not kind or c["kind"] == kind) and (not stage or c["stage"] == stage)
+                      and (not ql or ql in (c["name"] + c["what"] + c.get("product", "") + (c["owner"] or {}).get("name", "")).lower())]}
+
+
+@company.get("/customers/{cid}")
+def company_customer(cid: str, me=Depends(current_user)):
+    c = next((c for c in co.customers(store.users, _today()) if c["id"] == cid), None)
+    if not c:
+        raise HTTPException(404, "no such party")
+    return c
+
+
+@company.get("/history")
+def company_history(me=Depends(current_user)):
+    return {"items": co.history()}
+
+
+@company.get("/glossary")
+def company_glossary(q: str = "", me=Depends(current_user)):
+    return {"items": co.glossary(q)}
+
+
+@company.get("/wiki")
+def company_wiki(q: str = "", me=Depends(current_user)):
+    return {"items": co.wiki_list(q)}
+
+
+@company.get("/wiki/{slug}")
+def company_wiki_doc(slug: str, me=Depends(current_user)):
+    d = co.wiki_get(slug)
+    if not d:
+        raise HTTPException(404, "no such document")
+    return d
+
+
+@company.get("/calendar")
+def company_calendar(days: int = 90, back: int = 7, me=Depends(current_user)):
+    start = _today() - __import__("datetime").timedelta(days=min(back, 60))
+    return {"today": _today().isoformat(), "items": co.calendar(start, min(days, 400) + min(back, 60))}

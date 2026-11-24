@@ -14,7 +14,7 @@ from .. import db
 from .briefing import _llm_json
 
 PERSONA = "노워"
-ROUTES = {"home": "홈", "news": "소식", "mail": "메일", "chat": "메신저", "org": "조직도", "admin": "관리자 콘솔"}
+ROUTES = {"home": "홈", "news": "소식", "mail": "메일", "chat": "메신저", "org": "조직도", "company": "회사", "admin": "관리자 콘솔"}
 NAV = {f"nav-{r}": f"{n} 메뉴" for r, n in ROUTES.items()}
 ROUTE_TARGETS = {
     "home": {"clock-in": "출근하기 버튼", "briefing-summary": "오늘의 요약", "flagged": "보안 확인이 필요한 메시지", "urgent": "지금 처리할 일",
@@ -22,6 +22,7 @@ ROUTE_TARGETS = {
     "news": {"news-official": "공지와 게시물", "news-chat": "메신저 요약"},
     "mail": {"mail-list": "받은편지함 목록", "mail-reader": "메일 본문"},
     "chat": {"chat-channels": "채널 목록", "chat-messages": "대화"},
+    "company": {"company-tabs": "회사 정보 탭(개요·고객·위키·용어집·달력)"},
     "org": {"org-search": "사람 찾기 입력창", "org-depts": "본부와 팀 목록", "org-result": "검색 결과와 보고 라인"},
     "admin": {"admin-tabs": "관리자 탭", "admin-tab-auto": "자동화 단계 탭", "admin-tab-ops": "운영 지표 탭", "admin-tab-docs": "문서 처리 탭",
               "admin-tab-acts": "비서 제안 탭", "admin-tab-learn": "학습 데이터 탭"},
@@ -68,6 +69,25 @@ def _go(route):
     return {"type": "navigate", "route": route}
 
 
+WIKI_CUES = ("규정", "한도", "얼마", "절차", "몇 일", "며칠", "기한", "마감", "택시", "연차", "반차", "휴가", "경비", "정산", "구매", "결재", "장애", "온콜", "p1", "p2", "비밀번호", "개인정보", "온보딩", "용어")
+
+
+def _wiki_hit(msg: str):
+    """A rules question: the best wiki sentence for the words in it (company knowledge lives in the world's wiki, not in this prompt)."""
+    m = msg.lower()
+    if not any(c in m for c in WIKI_CUES):
+        return None
+    from world import company
+    words = [w for w in re.findall(r"[가-힣A-Za-z0-9]{2,}", m) if w not in ("규정", "알려줘", "알려", "얼마", "어떻게", "있어", "뭐야", "어디")]
+    best, best_score = None, 0
+    for d in company.WIKI:
+        for line in d["body"].split("\n"):
+            score = sum(1 for w in words if w in line.lower()) + (1 if any(w in d["title"] for w in words) else 0)
+            if score > best_score:
+                best, best_score = {"title": d["title"], "line": line.strip()[:160]}, score
+    return best if best_score >= 1 else None
+
+
 def rules(msg: str, route: str, visible: set, ctx: dict) -> tuple[str, list]:
     """Deterministic answers; also the fallback when the LLM is unavailable."""
     m = msg.lower()
@@ -77,6 +97,9 @@ def rules(msg: str, route: str, visible: set, ctx: dict) -> tuple[str, list]:
     def to(r, target, text):   # navigate first when we are on another page
         return ([] if route == r else [_go(r)]) + [_p(target, text)]
 
+    wk = _wiki_hit(msg)
+    if wk:
+        return (f"'{wk['title']}'에 이렇게 적혀 있어요. {wk['line']} 전체 내용은 회사 화면의 위키에서 볼 수 있어요.", to("company", "company-tabs", "위키 탭에서 규정 전문을 볼 수 있어요."))
     if has("안녕", "도움", "뭐 할 수", "무엇을 할 수", "기능", "누구"):
         return ("저는 노워예요. 화면 위를 돌아다니면서 어디를 보면 되는지 짚어 드려요. 오늘 할 일, 답장 초안, 조직도, 관리자 화면 같은 걸 물어보세요. 직접 보내거나 승인하지는 못하고, 위치만 알려드려요.", [])
     if has("보안", "의심", "피싱", "인젝션", "격리"):

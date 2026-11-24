@@ -30,3 +30,14 @@ export type PersonDetail = Person & { chain_of_command: Person[]; direct_reports
 export type OrgUnit = { name: string; headcount: number; lead: Person | null };
 export type OrgDept = { key: string; name: string; location: string; headcount: number; head: Person; units: OrgUnit[] };
 export type OrgData = { company: { name: string; founded: number; hq: string; sites: string[]; industry: string; stage: string }; headcount: number; ceo: Person; departments: OrgDept[] };
+
+export type Party = { id: string; name: string; domain: string; group: string; what: string; kind: "고객사" | "거래처" | "투자사"; stage: string; since: string; renewal: string | null; health: string;
+  product?: string; category?: string; annual_eok?: number; owner: { id: string; name: string; unit: string } | null; contact: { name: string; email: string } };
+export type Overview = { products: { id: string; name: string; since: string; what: string; owner_dept: string; status: string }[];
+  stats: { headcount: number; customers: number; running: number; annual_eok: number; vendors: number; attention: string[] };
+  next_events: { date: string; title: string; kind: string }[]; company: { name: string; founded: number; hq: string; sites: string[]; industry: string; stage: string } };
+export type HistoryItem = { month: string; title: string; detail: string; kind: string };
+export type Term = { term: string; group: string; meaning: string };
+export type WikiRow = { slug: string; title: string; owner: string; updated: string; tags: string[]; snippet: string };
+export type WikiDoc = WikiRow & { body: string };
+export type CalEvent = { date: string; title: string; kind: string };

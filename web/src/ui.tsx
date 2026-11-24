@@ -12,6 +12,7 @@ const P: Record<string, string> = {
   clock: "M12 7v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   check: "M5 12l4 4 10-10",
   warn: "M12 4l10 17H2L12 4zM12 10v5M12 18v.5",
+  book: "M5 4h10a3 3 0 013 3v13H8a3 3 0 01-3-3V4zM8 8h6M8 12h6",
 };
 export const Icon = ({ n, size = 18 }: { n: keyof typeof P; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
