@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>출근 도장에서 답장 발송까지</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Geist','Noto Sans KR',system-ui,sans-serif; background: #fcfaf3; color: #2b2620; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+.frame { max-width: 1200px; width: 100%; }
+.diagram-container { width: 100%; overflow-x: auto; }
+.eyebrow { font-family: 'Geist Mono',ui-monospace,monospace; font-size: .66rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #5a5043; margin-bottom: .5rem; }
+h1 { font-family: 'Instrument Serif','Noto Serif','Noto Serif KR',serif; font-size: clamp(1.5rem, 2.4vw + .75rem, 2rem); font-weight: 400; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 1.5rem; }
+svg { width: 100%; min-width: 1080px; display: block; }
+.notes { display: grid; grid-template-columns: 1.1fr 1fr .9fr; gap: 12px; margin-top: 20px; }
+.notes p { background: #fff; border: 1px solid rgba(43,38,32,0.12); border-radius: 6px; padding: 12px 14px; font-size: .86rem; line-height: 1.55; color: #5a5043; }
+.notes b { display: block; color: #2b2620; font-weight: 600; margin-bottom: 2px; }
+@media (max-width: 800px) { .notes { grid-template-columns: 1fr; } }
+@media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+</style>
+</head>
+<body>
+<div class="frame">
+<p class="eyebrow">Sequence · Project Nowhere</p>
+<h1>출근 도장에서 답장 발송까지</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 1080 868" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="sequence-title sequence-desc">
+<title id="sequence-title">출근 도장에서 답장 발송까지</title>
+<desc id="sequence-desc">출근 도장이 서명된 웹훅으로 비서를 깨우고, 비서가 사내 시스템과 LLM으로 브리핑을 만든 뒤, 사람이 승인해야 메일이 발송되는 순서.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#5a5043"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1d5bc4"/></marker>
+<marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1a6a42"/></marker>
+<marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#5a5043" stroke-width="1.2"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#fcfaf3"/>
+<line x1="120" y1="104" x2="120" y2="748" stroke="rgba(43,38,32,0.30)" stroke-dasharray="4,4"/>
+<line x1="330" y1="104" x2="330" y2="748" stroke="rgba(43,38,32,0.30)" stroke-dasharray="4,4"/>
+<line x1="540" y1="104" x2="540" y2="748" stroke="rgba(43,38,32,0.30)" stroke-dasharray="4,4"/>
+<line x1="750" y1="104" x2="750" y2="748" stroke="rgba(43,38,32,0.30)" stroke-dasharray="4,4"/>
+<line x1="960" y1="104" x2="960" y2="748" stroke="rgba(43,38,32,0.30)" stroke-dasharray="4,4"/>
+<rect x="72" y="548" width="780" height="180" rx="4" fill="rgba(43,38,32,0.02)" stroke="rgba(43,38,32,0.22)"/>
+<rect x="72" y="548" width="40" height="16" rx="2" fill="#fcfaf3" stroke="rgba(43,38,32,0.22)"/><text x="92" y="560" fill="#5a5043" font-family="'Geist Mono',ui-monospace,monospace" font-size="8" font-weight="500" text-anchor="middle" letter-spacing="0.12em">OPT</text>
+<text x="120" y="561" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="start" >[사람이 승인하면]</text>
+<path d="M120,148 L330,148" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="191.0" y="126" width="68" height="16" rx="2" fill="#fcfaf3"/><text x="225.0" y="138" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >출근 도장</text>
+<path d="M330,196 L540,196" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow-open)"/>
+<rect x="369.0" y="174" width="132" height="16" rx="2" fill="#fcfaf3"/><text x="435.0" y="186" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >서명된 웹훅 (HMAC)</text>
+<path d="M540,244 L750,244" fill="none" stroke="#1a6a42" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+<rect x="589.0" y="222" width="112" height="16" rx="2" fill="#fcfaf3"/><text x="645.0" y="234" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >내 토큰으로 조회</text>
+<path d="M750,292 L540,292" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<rect x="611.0" y="270" width="68" height="16" rx="2" fill="#fcfaf3"/><text x="645.0" y="282" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >항목 목록</text>
+<path d="M540,348 L960,348" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="566.0" y="326" width="148" height="16" rx="2" fill="#fcfaf3"/><text x="640.0" y="338" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >본문은 데이터로만 전달</text>
+<path d="M960,396 L540,396" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<rect x="600.0" y="374" width="80" height="16" rx="2" fill="#fcfaf3"/><text x="640.0" y="386" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >할 일 JSON</text>
+<path d="M540,440 H564 Q572,440 572,448 V456 Q572,464 564,464 H548" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="588" y="444" width="208" height="16" rx="2" fill="#fcfaf3"/><text x="692.0" y="456" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >근거 없는 항목 버림 · 피싱 격리</text>
+<path d="M540,512 L120,512" fill="none" stroke="#1d5bc4" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<rect x="394.0" y="490" width="92" height="16" rx="2" fill="#fcfaf3"/><text x="440.0" y="502" fill="#1d5bc4" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="600" text-anchor="middle" >오늘의 브리핑</text>
+<path d="M120,596 L540,596" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="166.0" y="574" width="132" height="16" rx="2" fill="#f9f7ef"/><text x="232.0" y="586" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >초안 확인 후 보내기</text>
+<path d="M540,644 L750,644" fill="none" stroke="#1a6a42" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+<rect x="579.0" y="622" width="132" height="16" rx="2" fill="#f9f7ef"/><text x="645.0" y="634" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >메일 발송 · 내 토큰</text>
+<path d="M750,692 L540,692" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<rect x="621.0" y="670" width="48" height="16" rx="2" fill="#f9f7ef"/><text x="645.0" y="682" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >발송됨</text>
+<rect x="40" y="32" width="160" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="40" y="32" width="160" height="64" rx="6" fill="rgba(90,80,67,0.10)" stroke="#6b604f" stroke-width="1" />
+<text x="120.0" y="61" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >직원</text>
+<text x="120.0" y="79" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >브라우저</text>
+<rect x="250" y="32" width="160" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="250" y="32" width="160" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="330.0" y="61" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >근태</text>
+<text x="330.0" y="79" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >서명된 웹훅</text>
+<rect x="460" y="32" width="160" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="460" y="32" width="160" height="64" rx="6" fill="rgba(29,91,196,0.08)" stroke="#1d5bc4" stroke-width="1.4" />
+<text x="540.0" y="61" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >비서 API</text>
+<text x="540.0" y="79" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >/api</text>
+<rect x="670" y="32" width="160" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="670" y="32" width="160" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="750.0" y="61" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >사내 시스템</text>
+<text x="750.0" y="79" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >메일·이슈·공지</text>
+<rect x="880" y="32" width="160" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="880" y="32" width="160" height="64" rx="6" fill="rgba(43,38,32,0.03)" stroke="rgba(43,38,32,0.30)" stroke-width="1" />
+<text x="960.0" y="61" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >LLM</text>
+<text x="960.0" y="79" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >모델</text>
+<text x="72" y="780" fill="#5a5043" font-family="'Instrument Serif','Noto Serif','Noto Serif KR',serif" font-size="18" font-weight="400" text-anchor="start" font-style="italic">발송은 사람이 누를 때만 일어나요. 어떤 단계에서도 AI가 혼자 메일을 보내지 않아요.</text>
+<line x1="40" y1="808" x2="1040" y2="808" stroke="rgba(43,38,32,0.12)"/>
+<text x="40" y="828" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="600" text-anchor="start" >범례</text>
+<rect x="112" y="820" width="20" height="12" rx="2" fill="rgba(29,91,196,0.08)" stroke="#1d5bc4" />
+<text x="142" y="830" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >비서</text>
+<path d="M194,826 L218,826" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="224" y="830" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >호출</text>
+<path d="M276,826 L300,826" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<text x="306" y="830" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >응답(점선)</text>
+<path d="M398,826 L422,826" fill="none" stroke="#1d5bc4" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<text x="428" y="830" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >핵심 결과</text>
+</svg>
+</div>
+<div class="notes"><p><b>깨우는 법</b> 출근 도장 시스템이 HMAC으로 서명한 웹훅을 보내요. 서명이 틀리면 비서는 움직이지 않아요.</p><p><b>믿지 않는 입력</b> 메일·채팅 본문은 지시가 아니라 데이터로만 모델에 줘요. 근거 id가 없는 할 일은 버려요.</p><p><b>사람이 마지막</b> 초안은 제안일 뿐이고, 외부 수신자는 한 번 더 확인해야 보내져요.</p></div>
+</div>
+</body>
+</html>

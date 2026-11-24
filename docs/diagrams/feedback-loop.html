@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피드백 루프 — 사람의 손길이 시험 문제가 돼요</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Geist','Noto Sans KR',system-ui,sans-serif; background: #fcfaf3; color: #2b2620; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+.frame { max-width: 1200px; width: 100%; }
+.diagram-container { width: 100%; overflow-x: auto; }
+.eyebrow { font-family: 'Geist Mono',ui-monospace,monospace; font-size: .66rem; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #5a5043; margin-bottom: .5rem; }
+h1 { font-family: 'Instrument Serif','Noto Serif','Noto Serif KR',serif; font-size: clamp(1.5rem, 2.4vw + .75rem, 2rem); font-weight: 400; letter-spacing: -.02em; line-height: 1.15; margin-bottom: 1.5rem; }
+svg { width: 100%; min-width: 1040px; display: block; }
+.notes { display: grid; grid-template-columns: 1.1fr 1fr .9fr; gap: 12px; margin-top: 20px; }
+.notes p { background: #fff; border: 1px solid rgba(43,38,32,0.12); border-radius: 6px; padding: 12px 14px; font-size: .86rem; line-height: 1.55; color: #5a5043; }
+.notes b { display: block; color: #2b2620; font-weight: 600; margin-bottom: 2px; }
+@media (max-width: 800px) { .notes { grid-template-columns: 1fr; } }
+@media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+</style>
+</head>
+<body>
+<div class="frame">
+<p class="eyebrow">Loop · Project Nowhere</p>
+<h1>피드백 루프 — 사람의 손길이 시험 문제가 돼요</h1>
+<div class="diagram-container">
+<svg viewBox="0 0 1040 772" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="feedback-loop-title feedback-loop-desc">
+<title id="feedback-loop-title">피드백 루프 — 사람의 손길이 시험 문제가 돼요</title>
+<desc id="feedback-loop-desc">브리핑 제안, 사람의 처리, 피드백 기록, 평가 사례 변환, 재채점 게이트, 개선 반영이 평가 사례 저장소를 중심으로 도는 순환.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#5a5043"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1d5bc4"/></marker>
+<marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1a6a42"/></marker>
+<marker id="arrow-open" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polyline points="0 0, 8 3, 0 6" fill="none" stroke="#5a5043" stroke-width="1.2"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#fcfaf3"/>
+<path d="M608.000,116.715 A240,240 0 0 1 704.969,187.073" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M743.285,252.000 A240,240 0 0 1 743.722,426.882" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M705.731,492.000 A240,240 0 0 1 609.115,562.842" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M432.000,563.285 A240,240 0 0 1 335.031,492.927" fill="none" stroke="#1d5bc4" stroke-width="1.6" marker-end="url(#arrow-accent)"/>
+<path d="M296.715,428.000 A240,240 0 0 1 296.278,253.118" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M334.269,188.000 A240,240 0 0 1 430.885,117.158" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M672.420,428.000 L615.263,395.000" fill="none" stroke="#5a5043" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<path d="M520.000,548.000 L520.000,398.000" fill="none" stroke="#5a5043" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<path d="M367.580,428.000 L424.737,395.000" fill="none" stroke="#5a5043" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<rect x="432" y="68" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="432" y="68" width="176" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="520.0" y="97" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >브리핑 제안</text>
+<text x="520.0" y="115" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >할 일과 초안을 만들어요</text>
+<rect x="640" y="188" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="640" y="188" width="176" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="728.0" y="217" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >사람이 처리</text>
+<text x="728.0" y="235" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >완료 · 제외 · 수정</text>
+<rect x="640" y="428" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="640" y="428" width="176" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="728.0" y="457" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >피드백 기록</text>
+<text x="728.0" y="475" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >처리 결과가 남아요</text>
+<rect x="432" y="548" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="432" y="548" width="176" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="520.0" y="577" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >평가 사례로</text>
+<text x="520.0" y="595" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >정답 라벨이 붙어요</text>
+<rect x="224" y="428" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="224" y="428" width="176" height="64" rx="6" fill="rgba(29,91,196,0.08)" stroke="#1d5bc4" stroke-width="1.4" />
+<text x="312.0" y="457" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >재채점 게이트</text>
+<text x="312.0" y="475" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >기준선 아래면 차단</text>
+<rect x="224" y="188" width="176" height="64" rx="6" fill="#fcfaf3"/>
+<rect x="224" y="188" width="176" height="64" rx="6" fill="#ffffff" stroke="#2b2620" stroke-width="1" />
+<text x="312.0" y="217" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >개선 반영</text>
+<text x="312.0" y="235" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >프롬프트·규칙 수정</text>
+<rect x="412" y="288" width="216" height="104" rx="6" fill="#fcfaf3"/>
+<rect x="412" y="288" width="216" height="104" rx="6" fill="rgba(43,38,32,0.05)" stroke="#5a5043" stroke-width="1" />
+<text x="520.0" y="329" fill="#2b2620" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="14" font-weight="600" text-anchor="middle" >평가 사례 저장소</text>
+<text x="520.0" y="347" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >모두가 같이 쓰는 기록</text>
+<text x="520.0" y="363" fill="#6b604f" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="middle" >사례가 쌓일수록 정확해져요</text>
+<rect x="657.9038105676658" y="395.0" width="36" height="16" rx="2" fill="#fcfaf3"/><text x="675.9038105676658" y="407.0" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >기록</text>
+<rect x="528.0" y="470.0" width="36" height="16" rx="2" fill="#fcfaf3"/><text x="546.0" y="482.0" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >사례</text>
+<rect x="346.0961894323342" y="395.0" width="36" height="16" rx="2" fill="#fcfaf3"/><text x="364.0961894323342" y="407.0" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="500" text-anchor="middle" >점수</text>
+<text x="40" y="664" fill="#5a5043" font-family="'Instrument Serif','Noto Serif','Noto Serif KR',serif" font-size="18" font-weight="400" text-anchor="start" font-style="italic">틀렸다고 눌러 준 한 번이 다음 배포의 시험 문제가 돼요.</text>
+<line x1="40" y1="696" x2="1000" y2="696" stroke="rgba(43,38,32,0.12)"/>
+<text x="40" y="716" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="600" text-anchor="start" >범례</text>
+<rect x="112" y="708" width="20" height="12" rx="2" fill="rgba(29,91,196,0.08)" stroke="#1d5bc4" />
+<text x="142" y="718" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >배포를 막을 수 있는 곳</text>
+<rect x="310" y="708" width="20" height="12" rx="2" fill="#ffffff" stroke="#2b2620" />
+<text x="340" y="718" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >단계</text>
+<rect x="392" y="708" width="20" height="12" rx="2" fill="rgba(43,38,32,0.05)" stroke="#5a5043" />
+<text x="422" y="718" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >공유 기록</text>
+<path d="M506,714 L530,714" fill="none" stroke="#5a5043" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="536" y="718" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >한 바퀴 흐름</text>
+<path d="M640,714 L664,714" fill="none" stroke="#5a5043" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<text x="670" y="718" fill="#5a5043" font-family="'Geist','Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif" font-size="12" font-weight="400" text-anchor="start" >기록(점선)</text>
+</svg>
+</div>
+<div class="notes"><p><b>무엇이 쌓이나</b> 완료·관련 없음·초안 수정·반려가 평가 사례(todo / reply)로 바뀌어 저장소에 쌓여요.</p><p><b>무엇이 막나</b> 프롬프트나 규칙을 바꾸면 이 사례로 다시 채점하고, 기준선보다 떨어지면 CI가 배포를 막아요.</p><p><b>아직 없는 것</b> 실제 서비스라면 사례 수집 전에 직원 동의, 개인정보 마스킹, 보관 기간 정책이 필요해요.</p></div>
+</div>
+</body>
+</html>

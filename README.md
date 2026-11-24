@@ -181,3 +181,6 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - 새 메일이 오면 알림으로 알려 주고 "브리핑 갱신"으로 새 할 일을 반영합니다.
 - 조직도: 사람 검색(키보드 이동), 근무지 필터, 내 소속 표시, 보고 라인 이동, 바로 메일·메시지 보내기.
 - 브라우저 점검: `node web/e2e/flow.cjs` (서버가 떠 있어야 함).
+
+## 다이어그램
+조직도·시스템 구조·시퀀스·피드백 루프는 [`docs/diagrams/`](docs/diagrams/README.md)에 있어요.
