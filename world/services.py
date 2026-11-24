@@ -272,7 +272,7 @@ def update_issue(iid: str, b: IssueUpdate, me=Depends(current_user)):
     i = next((i for i in store.issues if i["id"] == iid), None)
     if not i:
         raise HTTPException(404, "no such issue")
-    if i["assignee"] != me["id"]:
+    if i["assignee"] != me["id"] and not (me["role"] == "executive" and i["escalated"]):   # the assignee, or an executive for an escalated item
         raise HTTPException(403, "only the assignee can change an issue")
     if b.status not in ("열림", "진행 중", "해결"):
         raise HTTPException(422, "status must be 열림, 진행 중 or 해결")

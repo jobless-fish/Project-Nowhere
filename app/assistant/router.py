@@ -255,7 +255,9 @@ def _run(user_id: str, key: str, fn):
         raise HTTPException(409, str(e))
     except Exception as e:                      # the company system refused (permissions, rules) or is unreachable
         status = getattr(getattr(e, "response", None), "status_code", None)
-        raise HTTPException(409 if status in (403, 422) else 502, f"사내 시스템이 요청을 처리하지 못했어요 ({status or type(e).__name__})")
+        if status == 403:
+            raise HTTPException(409, "이 이슈는 담당자만 상태를 바꿀 수 있어요. 담당자에게 메시지로 요청하거나, '관련 없음'으로 제외해 주세요.")
+        raise HTTPException(409 if status == 422 else 502, f"사내 시스템이 요청을 처리하지 못했어요 ({status or type(e).__name__})")
     return flow.attach(user_id, {"todos": [t]})["todos"][0]
 
 

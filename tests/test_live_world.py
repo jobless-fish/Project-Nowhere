@@ -181,3 +181,11 @@ def test_llm_reply_with_invented_number_is_dropped():
     raw = {"replies": [{"from": "a", "text": "기본값은 30초예요."}, {"from": "b", "text": "확인해 보고 알려드릴게요."}]}
     assert [r["from"] for r in npc.validate_llm(raw, cands, "타임아웃 기본값이 몇 초인가요?")] == ["b"]
     assert len(npc.validate_llm({"replies": [{"from": "a", "text": "30초예요."}]}, cands, "기본 30초 맞나요?")) == 1
+
+
+def test_executive_may_update_an_escalated_issue_but_not_others(w):
+    c, tok, _ = w
+    esc = next(i for i in store.issues if i["escalated"])
+    other = next(i for i in store.issues if not i["escalated"] and i["assignee"] != "u_cto")
+    assert c.patch(f"/tracker/issues/{esc['id']}", json={"status": "진행 중"}, headers=tok("u_cto")).status_code == 200
+    assert c.patch(f"/tracker/issues/{other['id']}", json={"status": "진행 중"}, headers=tok("u_cto")).status_code == 403
