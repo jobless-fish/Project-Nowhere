@@ -31,9 +31,9 @@ export default function Home({ s }: { s: Session }) {
     setState("working");
     try {
       await world.post("/hr/clock-in", {}, s);
-      for (let i = 0; i < 8; i++) { await sleep(600); try { setB(await api.get<Briefing>(`/assistant/briefing?user_id=${uid}`)); setState("idle"); return; } catch { /* not ready */ } }
-      const r = await api.post<{ briefing: Briefing }>("/assistant/clock-in", { user_id: uid });
-      setB(r.briefing); setState("idle");
+      for (let i = 0; i < 8; i++) { await sleep(600); try { await api.get<Briefing>(`/assistant/briefing?user_id=${uid}`); await load(); return; } catch { /* not ready */ } }
+      await api.post("/assistant/clock-in", { user_id: uid });
+      await load();   // reload briefing, feedback AND any pre-drafted replies
     } catch { setState("error"); }
   };
   const propose = async (t: Todo) => {

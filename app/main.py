@@ -106,7 +106,7 @@ def label(doc_id: int, body: LabelIn):
         raise HTTPException(409, str(e))
 
 
-DOC_TYPES = ["expense_claim", "leave_request", "purchase_request", "inquiry"]
+DOC_TYPES = ["expense_claim", "leave_request", "purchase_request", "inquiry", "reply_internal"]
 
 
 @app.get("/autonomy", dependencies=[Depends(auth)])

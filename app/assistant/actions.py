@@ -10,7 +10,7 @@ Rules enforced in code (not in the prompt):
 import re
 from datetime import datetime
 
-from .. import db
+from .. import autonomy, db
 from .briefing import _llm_json
 from .guard import is_suspicious
 
@@ -37,7 +37,7 @@ def draft(user, item, todo, client) -> tuple[str, str]:
     return str(out.get("subject") or subject)[:200], str(out.get("body", ""))[:3000]
 
 
-def propose(user, briefing: dict, todo_key: str, source, client) -> dict:
+def propose(user, briefing: dict, todo_key: str, source, client, internal_only: bool = False) -> dict:
     todo = next((t for t in briefing["todos"] if t["key"] == todo_key), None)
     if not todo:
         raise LookupError("todo not found")
@@ -56,6 +56,8 @@ def propose(user, briefing: dict, todo_key: str, source, client) -> dict:
     item = mails[0]
     if is_suspicious(item):
         raise ValueError("flagged message: no draft is created")
+    if internal_only and item.reply_to.startswith("ext:"):
+        raise ValueError("pre-drafting is limited to internal recipients")
     subject, body = draft(user, item, todo, client)
     external = item.reply_to.startswith("ext:")
     status, note = "proposed", None
@@ -92,6 +94,7 @@ def decide(user, aid: int, approve: bool, subject: str | None, body: str | None,
             n = c.execute("UPDATE actions SET status='rejected', decided_at=? WHERE id=? AND status='proposed'", (_now(), aid)).rowcount
         if not n:
             raise ValueError(f"action is {a['status']}")
+        _record(a, agree=False)
         return get(aid)
     if a["status"] != "proposed":
         raise ValueError(f"action is {a['status']}")
@@ -113,7 +116,14 @@ def decide(user, aid: int, approve: bool, subject: str | None, body: str | None,
         status, note = "failed", f"{type(ex).__name__}: {ex}"[:200]
     with db.conn() as c:
         c.execute("UPDATE actions SET status=?, note=?, decided_at=? WHERE id=?", (status, note, _now(), aid))
+    if status == "sent":  # trust signal: sent exactly as drafted = the assistant got it right
+        _record(a, agree=not edited)
     return get(aid)
+
+
+def _record(a: dict, agree: bool):
+    key = "reply_external" if a["external"] else "reply_internal"
+    autonomy.record_outcome(a["id"], key, autonomy.get_mode(key), agree)
 
 
 def stats() -> dict:

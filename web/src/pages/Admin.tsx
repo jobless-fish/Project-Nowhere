@@ -5,9 +5,15 @@ import { Badge, Card, Empty, PageHead, Skeletons } from "../ui";
 
 const MODES = ["shadow", "assisted", "auto"];
 const MODE_KO: Record<string, string> = { shadow: "그림자", assisted: "보조", auto: "자동" };
-const TYPE_KO: Record<string, string> = { expense_claim: "경비 정산", leave_request: "휴가 신청", purchase_request: "구매 요청", inquiry: "사내 문의", other: "기타" };
+// Reply drafts use the same ladder, but "auto" only means pre-drafted: a person still presses send.
+const REPLY_KO: Record<string, string> = { assisted: "제안", auto: "미리 작성" };
+// 으로/로 by the last syllable (받침 없음 또는 ㄹ -> 로)
+const ro = (w: string) => { const j = (w.charCodeAt(w.length - 1) - 0xac00) % 28; return j === 0 || j === 8 ? "로" : "으로"; };
+const isReply = (t: string) => t.startsWith("reply_");
+const modeName = (t: string, m: string) => (isReply(t) ? REPLY_KO[m] : MODE_KO[m]);
+const TYPE_KO: Record<string, string> = { reply_internal: "회신 초안 (사내 수신자)", expense_claim: "경비 정산", leave_request: "휴가 신청", purchase_request: "구매 요청", inquiry: "사내 문의", other: "기타" };
 const REASON = (t: string) => t.startsWith("collecting") ? "표본을 모으는 중입니다" : t.replace(/agreement lower bound ([\d.]+) >= ([\d.]+)/, "일치율 신뢰구간 하한 $1 ≥ 기준 $2").replace(/recent agreement (\d+)\/(\d+) too low/, "최근 일치 $1/$2건으로 기준 미달");
-const NEED: Record<string, number> = { shadow: 20, assisted: 30 };
+const NEED = (t: string, m: string) => (m === "shadow" ? 20 : m === "assisted" ? (isReply(t) ? 20 : 30) : 0);
 
 function Autonomy() {
   const [rows, setRows] = useState<AutonomyRow[] | null>(null);
@@ -21,13 +27,14 @@ function Autonomy() {
       {rows.map((r) => (
         <Card key={r.doc_type}><div className="stack" style={{ gap: 10 }}>
           <div className="row wrap"><b className="grow">{TYPE_KO[r.doc_type] ?? r.doc_type}</b>
-            <span className="seg" role="img" aria-label={`현재 단계 ${MODE_KO[r.mode]}`}>{MODES.map((m) => <span key={m} className={m === r.mode ? "on" : ""}>{MODE_KO[m]}</span>)}</span></div>
-          {NEED[r.mode] && <div><div className="progress" role="progressbar" aria-valuenow={r.samples} aria-valuemax={NEED[r.mode]}>
-            <i style={{ width: `${Math.min(100, (r.samples / NEED[r.mode]) * 100)}%` }} /></div>
-            <p className="small muted" style={{ marginTop: 4 }}>표본 {r.samples}/{NEED[r.mode]}건 · 일치 {r.agree}건 · 신뢰구간 하한 {r.lower_bound}</p></div>}
+            <span className="seg" role="img" aria-label={`현재 단계 ${modeName(r.doc_type, r.mode)}`}>{(isReply(r.doc_type) ? ["assisted", "auto"] : MODES).map((m) => <span key={m} className={m === r.mode ? "on" : ""}>{modeName(r.doc_type, m)}</span>)}</span></div>
+          {NEED(r.doc_type, r.mode) > 0 && <div><div className="progress" role="progressbar" aria-valuenow={r.samples} aria-valuemax={NEED(r.doc_type, r.mode)}>
+            <i style={{ width: `${Math.min(100, (r.samples / NEED(r.doc_type, r.mode)) * 100)}%` }} /></div>
+            <p className="small muted" style={{ marginTop: 4 }}>표본 {r.samples}/{NEED(r.doc_type, r.mode)}건 · {isReply(r.doc_type) ? "초안 그대로 발송" : "일치"} {r.agree}건 · 신뢰구간 하한 {r.lower_bound}</p></div>}
+          {isReply(r.doc_type) && <p className="small muted">미리 작성 단계가 되면 출근할 때 사내 수신자 초안을 먼저 만들어 둬요. 발송은 항상 사람이 눌러요. 외부 수신자는 승격 대상이 아니에요.</p>}
           {r.mode === "auto" && <p className="small muted">자동 단계 · 최근 결과 신뢰구간 하한 {r.lower_bound}{r.applied && " · 자동 강등됨"}</p>}
           <div className="row"><span className="small muted grow">{REASON(r.reason)}</span>
-            {r.recommended_mode !== r.mode && <button className="btn primary sm" onClick={() => promote(r)}>{MODE_KO[r.recommended_mode]}로 승격 승인</button>}</div>
+            {r.recommended_mode !== r.mode && <button className="btn primary sm" onClick={() => promote(r)}>{modeName(r.doc_type, r.recommended_mode)}{ro(modeName(r.doc_type, r.recommended_mode))} 승격 승인</button>}</div>
         </div></Card>))}
     </div>
   );

@@ -23,15 +23,24 @@ def wilson_lower(agree: int, n: int, z: float = 1.96) -> float:
     return max(0.0, (centre - margin) / d)
 
 
+def default_mode(doc_type: str) -> str:
+    # reply drafts never start in "shadow": the human always sees and approves the draft
+    return "assisted" if doc_type.startswith("reply_") else config.DEFAULT_MODE
+
+
 def get_mode(doc_type: str) -> str:
     with db.conn() as c:
         r = c.execute("SELECT mode FROM modes WHERE doc_type=?", (doc_type,)).fetchone()
-    return r["mode"] if r else config.DEFAULT_MODE
+    return r["mode"] if r else default_mode(doc_type)
 
 
 def set_mode(doc_type: str, mode: str):
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
+    if doc_type == "reply_external":
+        raise ValueError("external replies always need a human approval")
+    if doc_type.startswith("reply_") and mode == "shadow":
+        raise ValueError("reply drafts have no shadow mode")
     with db.conn() as c:
         c.execute("INSERT INTO modes VALUES(?,?) ON CONFLICT(doc_type) DO UPDATE SET mode=excluded.mode",
                   (doc_type, mode))
@@ -61,14 +70,20 @@ def status(doc_type: str) -> dict:
     n, a = len(rows), sum(r["agree"] for r in rows)
     lb = wilson_lower(a, n)
     rec, why = mode, "collecting data"
+    is_reply = doc_type.startswith("reply_")
+    need_n, need_lb = (config.REPLY_PROMOTE_N, config.REPLY_PROMOTE_LB) if is_reply else (config.PROMOTE_ASSIST_N, config.PROMOTE_ASSIST_LB)
+    demote_lb = config.REPLY_DEMOTE_LB if is_reply else config.DEMOTE_LB
+    if doc_type == "reply_external":
+        return {"doc_type": doc_type, "mode": mode, "samples": n, "agree": a, "agreement_rate": round(a / n, 3) if n else None,
+                "lower_bound": round(lb, 3), "recommended_mode": mode, "reason": "external recipients: a human always approves"}
     if mode == "shadow" and n >= config.PROMOTE_SHADOW_N and lb >= config.PROMOTE_SHADOW_LB:
         rec, why = "assisted", f"agreement lower bound {lb:.2f} >= {config.PROMOTE_SHADOW_LB}"
-    elif mode == "assisted" and n >= config.PROMOTE_ASSIST_N and lb >= config.PROMOTE_ASSIST_LB:
-        rec, why = "auto", f"agreement lower bound {lb:.2f} >= {config.PROMOTE_ASSIST_LB}"
+    elif mode == "assisted" and n >= need_n and lb >= need_lb:
+        rec, why = "auto", f"agreement lower bound {lb:.2f} >= {need_lb}"
     elif mode == "auto":
         recent = rows[:20]
         rn, ra = len(recent), sum(r["agree"] for r in recent)
-        if rn >= 10 and wilson_lower(ra, rn) < config.DEMOTE_LB:
+        if rn >= 10 and wilson_lower(ra, rn) < demote_lb:
             rec, why = "assisted", f"recent agreement {ra}/{rn} too low"
     return {"doc_type": doc_type, "mode": mode, "samples": n, "agree": a,
             "agreement_rate": round(a / n, 3) if n else None, "lower_bound": round(lb, 3),

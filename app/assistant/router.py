@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from .. import db
 from ..llm import get_client
+from .. import autonomy
 from . import actions, flywheel
 from .briefing import build_briefing, build_digest
 from .sources import get_source
@@ -70,7 +71,19 @@ def _clock_in(user_id: str):
     with db.conn() as c:
         c.execute("INSERT INTO briefings(user_id,day,payload) VALUES(?,?,?)",
                   (user.id, day, json.dumps(brief, ensure_ascii=False)))
+    autonomy.evaluate(["reply_internal"])                       # demote first if quality dropped
+    if autonomy.get_mode("reply_internal") == "auto":           # earned trust: drafts are prepared, never sent
+        _prepare_drafts(user, brief)
     return {"clock_in_at": at, "briefing": brief, "cached": False}
+
+
+def _prepare_drafts(user, brief):
+    source, client = get_source(), get_client()
+    for t in brief["todos"]:
+        try:
+            actions.propose(user, brief, t["key"], source, client, internal_only=True)
+        except (LookupError, ValueError):
+            continue          # not a mail todo / external / flagged: simply no pre-draft
 
 
 @router.get("/briefing")

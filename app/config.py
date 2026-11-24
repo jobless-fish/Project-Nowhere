@@ -15,3 +15,6 @@ SAMPLE_RATE = float(os.getenv("AUDIT_SAMPLE_RATE", "0.1"))  # share of auto item
 PROMOTE_SHADOW_N, PROMOTE_SHADOW_LB = 20, 0.85      # shadow -> assisted
 PROMOTE_ASSIST_N, PROMOTE_ASSIST_LB = 30, 0.95      # assisted -> auto
 DEMOTE_LB = 0.90                                    # auto -> assisted when recent outcomes fall below
+# Reply drafts: promotion only means "pre-drafted at clock-in" (sending always needs a human click), so the bar is lower
+REPLY_PROMOTE_N, REPLY_PROMOTE_LB = 20, 0.80
+REPLY_DEMOTE_LB = 0.60
