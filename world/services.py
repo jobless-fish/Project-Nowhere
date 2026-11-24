@@ -315,8 +315,12 @@ def notify_assistant(user_id: str):
     url = os.getenv("ASSISTANT_URL")
     if not url:
         return
+    secret = os.getenv("ASSISTANT_WEBHOOK_SECRET", "")
+    if len(secret) < 16:                                # same rule as the receiver: no default key, so nothing is signed with a guessable one
+        log.warning("ASSISTANT_WEBHOOK_SECRET is missing or shorter than 16 characters: clock-in webhook not sent")
+        return
     body = json.dumps({"user_id": user_id, "ts": time.time()}).encode()
-    sig = hmac.new(os.getenv("ASSISTANT_WEBHOOK_SECRET", "dev-webhook").encode(), body, hashlib.sha256).hexdigest()
+    sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
     try:
         httpx.post(f"{url.rstrip('/')}/assistant/webhook/clock-in", content=body, timeout=15,
                    headers={"X-Signature": sig, "Content-Type": "application/json"})

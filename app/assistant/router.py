@@ -48,13 +48,23 @@ def clock_in(body: ClockIn):
 
 
 WEBHOOK_MAX_AGE = 300.0   # seconds
+MIN_SECRET = 16           # characters; shorter (or missing) counts as "not configured"
+
+
+def webhook_secret() -> bytes | None:
+    """The shared HMAC key between the attendance system and the assistant. There is deliberately NO built-in default: a default is a
+    known key, and a known key lets anyone forge a clock-in. The combined server (server.py) generates a random one per process."""
+    v = os.getenv("ASSISTANT_WEBHOOK_SECRET", "")
+    return v.encode() if len(v) >= MIN_SECRET else None
 
 
 @public.post("/webhook/clock-in")
 async def clock_in_webhook(request: Request, x_signature: str | None = Header(default=None)):
     """Called by the attendance system. Authenticated by HMAC over the raw body (no user session here)."""
     raw = await request.body()
-    secret = os.getenv("ASSISTANT_WEBHOOK_SECRET", "dev-webhook").encode()
+    secret = webhook_secret()
+    if secret is None:                                  # fail closed: without a real secret nobody can be authenticated, so nobody is let in
+        raise HTTPException(503, "clock-in webhook is disabled: set ASSISTANT_WEBHOOK_SECRET (16+ characters) on both systems")
     good = hmac.new(secret, raw, hashlib.sha256).hexdigest()
     if not x_signature or not hmac.compare_digest(x_signature, good):
         raise HTTPException(401, "bad signature")

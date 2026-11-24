@@ -8,6 +8,7 @@ so permissions, tokens and the signed clock-in webhook behave the same as in the
 Run:  uvicorn server:combined --port 8000       (PORT env is honoured by the Docker image)
 """
 import os
+import secrets
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -15,6 +16,10 @@ from pathlib import Path
 PORT = os.getenv("PORT", "8000")
 # Defaults for a self-contained demo. Every one can be overridden from the environment.
 os.environ.setdefault("SOURCE", "world")
+# Both halves live in this process and must share the webhook key: generate a random one (never a built-in default). Set ASSISTANT_WEBHOOK_SECRET
+# yourself if you also run other components against this server.
+if not os.environ.get("ASSISTANT_WEBHOOK_SECRET"):          # unset or empty -> random; a value you set yourself is respected (and checked for length)
+    os.environ["ASSISTANT_WEBHOOK_SECRET"] = secrets.token_urlsafe(32)
 # The internal addresses (assistant -> company systems, attendance webhook) must match the port uvicorn really listens on, whatever
 # --port the user chose. If the user did not set them, they are learnt from the first request (see AutoAddress below).
 _AUTO_ADDR = "WORLD_URL" not in os.environ and "ASSISTANT_URL" not in os.environ

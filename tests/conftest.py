@@ -1,6 +1,8 @@
 import os
 
 import pytest
+
+TEST_WEBHOOK_SECRET = "test-webhook-secret-0123456789"
 from fastapi.testclient import TestClient
 
 
@@ -17,3 +19,9 @@ def client(tmp_path, monkeypatch):
     from app.main import app
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _webhook_secret(monkeypatch):
+    """The webhook has no built-in default key, so every test that signs one states its key."""
+    monkeypatch.setenv("ASSISTANT_WEBHOOK_SECRET", TEST_WEBHOOK_SECRET)

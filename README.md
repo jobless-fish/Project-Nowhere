@@ -194,3 +194,10 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - Windows: 저장소 폴더의 **`start.bat`**을 더블클릭 (코드 받기 → 파이썬 패키지 → 웹 빌드 → 앱 창 실행).
 - macOS/Linux: `./start.sh`
 처음 한 번만 Git, Python, Node.js(LTS)가 설치돼 있어야 해요. 단계 하나가 실패하면 창이 닫히지 않고 오류를 보여 줘요.
+
+## 출근 웹훅 비밀값
+출근 도장 시스템이 비서를 깨울 때 쓰는 서명 키(`ASSISTANT_WEBHOOK_SECRET`)에는 **기본값이 없어요.** 기본값은 곧 모두가 아는 열쇠라서 누구나 출근을 위조할 수 있기 때문이에요.
+- `python launch.py` / `server:combined` (한 프로세스): 켤 때마다 **무작위 키를 자동 생성**해요. 아무것도 할 필요가 없어요.
+- 두 프로세스로 나눠 띄울 때(`run_demo.sh` 포함): 두 쪽에 **같은 16자 이상** 값을 주세요. `run_demo.sh`는 알아서 만들어 줘요.
+- 값이 없거나 16자 미만이면 웹훅은 **503으로 거부**하고(`/api/health`에 `webhook_configured: false`), 근태 쪽은 서명 없이 보내지 않고 경고만 남겨요.
+- 서명된 요청은 5분이 지나면 거부해요(재전송 방지).

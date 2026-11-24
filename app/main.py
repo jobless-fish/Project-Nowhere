@@ -46,7 +46,8 @@ def _row(r):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "prompt_version": config.PROMPT_VERSION}
+    from .assistant.router import webhook_secret
+    return {"ok": True, "prompt_version": config.PROMPT_VERSION, "webhook_configured": webhook_secret() is not None}
 
 
 @app.post("/documents", dependencies=[Depends(auth)], status_code=201)

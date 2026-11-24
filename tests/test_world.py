@@ -79,7 +79,7 @@ def test_world_injection_and_exec_secrets(world):
 def test_signed_webhook(world):
     from app.main import app
     import time
-    sign = lambda b: hmac.new(b"dev-webhook", b, hashlib.sha256).hexdigest()
+    sign = lambda b: hmac.new(b"test-webhook-secret-0123456789", b, hashlib.sha256).hexdigest()
     body = json.dumps({"user_id": "u_dev1", "ts": time.time()}).encode()
     good = sign(body)
     with TestClient(app) as c:
@@ -99,3 +99,38 @@ def test_hr_clock_in_notifies_assistant(world, monkeypatch):
     monkeypatch.setattr(services, "notify_assistant", lambda uid: seen.append(uid))
     assert http.post("/hr/clock-in", headers=hdr(http, "u_kim")).status_code == 200
     assert seen == ["u_kim"]
+
+
+def test_webhook_fails_closed_without_a_real_secret(world, monkeypatch):
+    import time
+    from app.main import app
+    body = json.dumps({"user_id": "u_dev1", "ts": time.time()}).encode()
+    for value in (None, "", "short", "dev-webhook"):          # missing, empty, too short, the old built-in default
+        if value is None:
+            monkeypatch.delenv("ASSISTANT_WEBHOOK_SECRET", raising=False)
+        else:
+            monkeypatch.setenv("ASSISTANT_WEBHOOK_SECRET", value)
+        sig = hmac.new((value or "").encode(), body, hashlib.sha256).hexdigest()          # even a correctly computed signature is refused
+        with TestClient(app) as c:
+            r = c.post("/assistant/webhook/clock-in", content=body, headers={"X-Signature": sig})
+            assert r.status_code == 503, value
+            assert c.get("/health").json()["webhook_configured"] is False
+
+
+def test_world_does_not_sign_with_a_guessable_key(monkeypatch, caplog):
+    sent = []
+    monkeypatch.setenv("ASSISTANT_URL", "http://assistant.invalid/api")
+    monkeypatch.setenv("ASSISTANT_WEBHOOK_SECRET", "dev-webhook")
+    monkeypatch.setattr(services.httpx, "post", lambda *a, **k: sent.append(a))
+    services.notify_assistant("u_kim")
+    assert sent == []
+    monkeypatch.setenv("ASSISTANT_WEBHOOK_SECRET", "a-long-enough-secret-123")
+    services.notify_assistant("u_kim")
+    assert len(sent) == 1
+
+
+def test_combined_server_generates_a_random_secret_per_process():
+    import os, subprocess, sys
+    code = "import os, server; print(os.environ['ASSISTANT_WEBHOOK_SECRET'])"
+    a, b = (subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=".", env={**os.environ, "DOCFLOW_DB": ":memory:", "ASSISTANT_WEBHOOK_SECRET": ""}).stdout.strip() for _ in range(2))
+    assert len(a) >= 32 and a != b
