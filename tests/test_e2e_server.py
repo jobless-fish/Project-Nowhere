@@ -95,3 +95,18 @@ def test_web_app_is_served_when_built(srv):
     if not (ROOT / "web" / "dist").exists():
         pytest.skip("web/dist not built")
     assert r.status_code == 200 and "<div id=\"root\">" in r.text
+
+
+def test_demo_starts_with_an_empty_portable_database(tmp_path):
+    """No /tmp assumption (Windows) and no leftovers from a previous run; a user-supplied DOCFLOW_DB is never deleted."""
+    keep = tmp_path / "keep.db"
+    keep.write_text("precious")
+    env = {k: v for k, v in os.environ.items() if k != "DOCFLOW_DB"} | {"PYTHONPATH": str(ROOT), "TMPDIR": str(tmp_path), "TEMP": str(tmp_path), "TMP": str(tmp_path)}
+    (tmp_path / "nowhere-demo.db").write_text("stale data from an earlier run")
+    out = subprocess.run([sys.executable, "-c", "import server, os; print(os.environ['DOCFLOW_DB'])"], cwd=ROOT, env=env, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr[-300:]
+    db = Path(out.stdout.strip().splitlines()[-1])
+    assert db.parent == tmp_path and db.name == "nowhere-demo.db" and not db.exists()          # portable temp dir, stale file removed
+    env2 = {**env, "DOCFLOW_DB": str(keep)}
+    subprocess.run([sys.executable, "-c", "import server"], cwd=ROOT, env=env2, capture_output=True, text=True)
+    assert keep.read_text() == "precious"                                                      # explicit path is never touched

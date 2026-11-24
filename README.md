@@ -13,7 +13,7 @@
 ## 한 줄로 실제 서버 실행 (권장)
 ```bash
 cd web && npm install && npx vite build && cd .. && pip install -r requirements.txt
-uvicorn server:combined --port 8000        # http://localhost:8000  — 앱·비서 API(/api)·사내 시스템(/world)이 한 주소에서 동작
+uvicorn server:combined --port 8000        # http://localhost:8000 (데이터는 실행할 때마다 비어 있는 상태로 시작하는 데모예요. 보존하려면 DOCFLOW_DB=파일경로)  — 앱·비서 API(/api)·사내 시스템(/world)이 한 주소에서 동작
 ```
 Docker: `docker compose up --build` (Dockerfile은 위 과정을 그대로 자동화. 이 환경에는 Docker가 없어 **이미지 빌드는 직접 검증하지 못했습니다**). Render 배포용 `render.yaml`도 있으나 마찬가지로 미검증입니다.
 `tests/test_e2e_server.py`가 실제 서버를 띄워 HTTP만으로 출근 웹훅 → 브리핑 → 초안 승인 → 수신자 도착 → 권한 → 피드백 수집까지 검증합니다.

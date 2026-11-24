@@ -8,6 +8,7 @@ so permissions, tokens and the signed clock-in webhook behave the same as in the
 Run:  uvicorn server:combined --port 8000       (PORT env is honoured by the Docker image)
 """
 import os
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -18,7 +19,13 @@ os.environ.setdefault("WORLD_URL", f"http://127.0.0.1:{PORT}/world")
 os.environ.setdefault("ASSISTANT_URL", f"http://127.0.0.1:{PORT}/api")
 os.environ.setdefault("LLM_PROVIDER", "mock")      # no key, no cost; set LLM_PROVIDER=openai|claude for a real model
 os.environ.setdefault("DEFAULT_MODE", "auto")
-os.environ.setdefault("DOCFLOW_DB", os.getenv("DOCFLOW_DB", "/tmp/nowhere.db"))
+# Data file: portable default (the OS temp dir; there is no /tmp on Windows). With no DOCFLOW_DB set this is a throw-away DEMO,
+# so it starts empty every time. If you set DOCFLOW_DB yourself, that file is never touched or deleted.
+if "DOCFLOW_DB" not in os.environ:
+    _demo_db = Path(tempfile.gettempdir()) / "nowhere-demo.db"
+    for _f in (_demo_db, Path(f"{_demo_db}-wal"), Path(f"{_demo_db}-shm")):
+        _f.unlink(missing_ok=True)
+    os.environ["DOCFLOW_DB"] = str(_demo_db)
 
 from fastapi import FastAPI  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
