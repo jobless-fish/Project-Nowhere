@@ -120,7 +120,7 @@ WIKI = [
 EVENTS = [
     ("2026-11-27", "월말 결산 마감 (경영지원본부 자료 요청 집중)", "deadline", "all"),
     ("2026-11-28", "오전 사옥 전기 점검 정전 — 중요 작업은 미리 저장", "outage", "all"),
-    ("2026-12-05", "4분기 전사 타운홀", "company", "all"),
+    ("2026-12-04", "4분기 전사 타운홀", "company", "all"),
     ("2026-12-10", "정보보안 교육 이수 마감", "deadline", "all"),
     ("2026-12-18", "연말 성과 평가 자기 평가서 제출", "deadline", "all"),
     ("2026-12-24", "연말 단축 근무 (15시 퇴근)", "company", "all"),
@@ -164,18 +164,21 @@ def customers(users: dict, today: date | None = None) -> list:
                    "owner": {"id": own["id"], "name": own["name"], "unit": own["unit"]} if own else None,
                    "contact": {"name": f"{s}{g}", "email": f"{gr}.{sr}@{domain}"}}
             if group in ("insurer", "ga"):
-                since = date(2020 + r.randrange(0, 6), 1 + r.randrange(12), 1)
+                # first customer is 2020-06 (anchor), claim launched 2021-03, GA market opened 2022-10: nobody signs before their product existed
+                since = date((2022 if group == "ga" else 2021) + r.randrange(0, 4), 1 + r.randrange(12), 1)
+                if group == "ga" and since < date(2022, 11, 1):
+                    since = date(2022, 11, 1)
                 if since > today:
                     since = date(2025, 6, 1)
                 stage = r.choices(["운영", "갱신 협의", "도입 검토", "파일럿"], [6, 2, 1, 1])[0]
                 renew = since.replace(year=today.year + (1 if since.replace(year=today.year) <= today else 0))
-                prod = "노웨어 클레임" if group == "insurer" and r.random() < .7 else "노웨어 언더" if group == "insurer" else "노웨어 클레임 · 언더"
+                prod = "노웨어 클레임" if group == "insurer" and (since < date(2023, 5, 1) or r.random() < .7) else "노웨어 언더" if group == "insurer" else "노웨어 클레임 · 언더"
                 health = "주의" if stage == "갱신 협의" and r.random() < .5 else "양호"
                 row.update(kind="고객사", product=prod, stage=stage, since=since.isoformat()[:7], renewal=renew.isoformat() if stage != "파일럿" else None,
-                           annual_eok=round(r.uniform(1.2, 9.5) if group == "insurer" else r.uniform(0.5, 3.0), 1) if stage != "파일럿" else 0.0, health=health)
+                           annual_eok=round(r.uniform(4.0, 20.0) if group == "insurer" else r.uniform(1.5, 6.0), 1) if stage != "파일럿" else 0.0, health=health)
                 if name in ANCHORS:
                     stage, sn, prod = ANCHORS[name]
-                    row.update(stage=stage, since=sn, product=prod, renewal=row["renewal"] or date(today.year + 1, 6, 30).isoformat(), annual_eok=row["annual_eok"] or 4.0)
+                    row.update(stage=stage, since=sn, product=prod, renewal=row["renewal"] or date(today.year + 1, 6, 30).isoformat(), annual_eok=row["annual_eok"] or 8.0)
             elif group == "vendor":
                 row.update(kind="거래처", category=VENDOR_CAT.get(name, what), stage="계약 중", since=f"{2019 + r.randrange(0, 6)}-{1 + r.randrange(12):02d}", renewal=None, health="양호")
             else:
@@ -194,8 +197,9 @@ def overview(users: dict, today: date | None = None) -> dict:
 
 
 def calendar(start: date, days: int) -> list:
+    from . import archive
     end = start + timedelta(days=days)
-    return [{"date": d, "title": t, "kind": k, "audience": a} for d, t, k, a in EVENTS if start.isoformat() <= d <= end.isoformat()]
+    return [e for e in archive.all_events(start.year, end.year) if start.isoformat() <= e["date"] <= end.isoformat()]
 
 
 def history() -> list:

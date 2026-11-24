@@ -41,3 +41,7 @@ export type Term = { term: string; group: string; meaning: string };
 export type WikiRow = { slug: string; title: string; owner: string; updated: string; tags: string[]; snippet: string };
 export type WikiDoc = WikiRow & { body: string };
 export type CalEvent = { date: string; title: string; kind: string };
+export type Quarter = { year: number; quarter: number; label: string; headcount: number; customers: number; arr_eok: number; revenue_eok: number; p1: number; p2: number; in_progress: boolean };
+export type Postmortem = { date: string; severity: string; title: string; impact: string; cause: string; fix: string; unit: string };
+export type YearRec = { year: number; headcount: number; customers: number; revenue_eok: number; p1: number; p2: number; hired: number; in_progress: boolean };
+export type YearDetail = YearRec & { quarters: Quarter[]; hires: { dept: string; count: number }[]; events: HistoryItem[]; postmortems: Postmortem[]; townhalls: { label: string; text: string }[] };

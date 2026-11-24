@@ -334,6 +334,7 @@ def clock_in(bg: BackgroundTasks, me=Depends(current_user)):
 # ---- Company knowledge: products, customers & partners, history, glossary, wiki, calendar ----
 from datetime import date as _date  # noqa: E402
 
+from . import archive as arch  # noqa: E402
 from . import company as co  # noqa: E402
 from .store import COMPANY  # noqa: E402
 
@@ -388,7 +389,24 @@ def company_wiki_doc(slug: str, me=Depends(current_user)):
     return d
 
 
+@company.get("/years")
+def company_years(me=Depends(current_user)):
+    ys = arch.years(store.users, co.customers(store.users, _today()))
+    return {"items": [{k: y[k] for k in ("year", "headcount", "customers", "revenue_eok", "p1", "p2", "hired", "in_progress")} for y in ys]}
+
+
+@company.get("/years/{year}")
+def company_year(year: int, me=Depends(current_user)):
+    if not arch.FIRST_YEAR <= year <= arch.NOW.year:
+        raise HTTPException(404, "no records for that year")
+    return arch.year_summary(store.users, co.customers(store.users, _today()), year)
+
+
 @company.get("/calendar")
-def company_calendar(days: int = 90, back: int = 7, me=Depends(current_user)):
+def company_calendar(days: int = 90, back: int = 7, year: int = 0, me=Depends(current_user)):
+    if year:
+        if not arch.FIRST_YEAR <= year <= arch.NOW.year + 1:
+            raise HTTPException(404, "no calendar for that year")
+        return {"today": _today().isoformat(), "items": arch.all_events(year, year)}
     start = _today() - __import__("datetime").timedelta(days=min(back, 60))
     return {"today": _today().isoformat(), "items": co.calendar(start, min(days, 400) + min(back, 60))}

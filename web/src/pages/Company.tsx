@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { world } from "../api";
-import type { CalEvent, HistoryItem, Overview, Party, Session, Term, WikiDoc, WikiRow } from "../types";
+import type { CalEvent, HistoryItem, Overview, Party, Session, Term, WikiDoc, WikiRow, YearDetail, YearRec } from "../types";
 import { Badge, Card, Empty, Failed, PageHead, Skeletons } from "../ui";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -86,23 +86,57 @@ function Glossary({ s }: { s: Session }) {
   );
 }
 
+function Years({ s }: { s: Session }) {
+  const list = useGet<{ items: YearRec[] }>(s, "/company/years");
+  const [year, setYear] = useState(2026);
+  const d = useGet<YearDetail>(s, `/company/years/${year}`);
+  if (list.bad) return <Failed what="연도별 기록" onRetry={list.load} />;
+  const max = Math.max(...(list.d?.items.map((y) => y.headcount) ?? [1]));
+  return (
+    <div className="stack" style={{ gap: 20 }}>
+      <Card kind="flat"><div className="stack"><h2 style={{ marginBottom: 0 }}>해마다 이만큼 커졌어요</h2>
+        <p className="small muted">막대는 그해 말 임직원 수예요. 입사일은 로스터에서, 이미 퇴사한 사람은 일정한 비율로 보정해서 계산했어요.</p>
+        <div className="bars" role="img" aria-label="연도별 임직원 수">{list.d?.items.map((y) => <button key={y.year} className={y.year === year ? "on" : ""} onClick={() => setYear(y.year)} aria-pressed={y.year === year}>
+          <span className="bar" style={{ height: `${Math.max(8, (y.headcount / max) * 100)}%` }} /><b>{y.headcount}</b><span className="small muted">{y.year}</span></button>)}</div></div></Card>
+      {d.bad ? <Failed what={`${year}년 기록`} onRetry={d.load} /> : !d.d ? <Skeletons /> : <>
+        <Card><div className="stack">
+          <h2 style={{ marginBottom: 0 }}>{year}년{d.d.in_progress && <span className="small muted"> · 진행 중(11월 기준)</span>}</h2>
+          <div className="row wrap small"><span>연말 임직원 <b>{d.d.headcount}명</b> (이 해 입사 {d.d.hired}명)</span><span>·</span><span>고객사 <b>{d.d.customers}곳</b></span><span>·</span><span>매출 <b>{d.d.revenue_eok}억원</b></span><span>·</span><span>장애 P1 {d.d.p1} · P2 {d.d.p2}</span></div>
+          <table className="tbl"><thead><tr><th>분기</th><th>인원</th><th>고객사</th><th>매출(억)</th><th>P1</th><th>P2</th></tr></thead><tbody>{d.d.quarters.map((q) => <tr key={q.label}><td>{q.label}{q.in_progress ? " (진행 중)" : ""}</td><td>{q.headcount}</td><td>{q.customers}</td><td>{q.revenue_eok}</td><td>{q.p1}</td><td>{q.p2}</td></tr>)}</tbody></table>
+          {d.d.hires.length > 0 && <p className="small muted">입사: {d.d.hires.map((h) => `${h.dept} ${h.count}명`).join(" · ")}</p>}
+        </div></Card>
+        <section><h2>이 해의 일</h2><ol className="timeline">{d.d.events.map((x) => <li key={x.month + x.title}><span className="mono small faint">{x.month}</span><div><b>{x.title}</b> <Badge>{KIND_KO[x.kind] ?? x.kind}</Badge><p className="small muted">{x.detail}</p></div></li>)}</ol></section>
+        {d.d.postmortems.length > 0 && <section><h2>장애와 사후 분석</h2><div className="stack">{d.d.postmortems.map((p) => <Card key={p.date} kind="flat"><div className="stack" style={{ gap: 4 }}>
+          <div className="row wrap"><Badge kind={p.severity === "P1" ? "urgent" : "warn"}>{p.severity}</Badge><b>{p.title}</b><span className="small faint">{p.date} · {p.unit}</span></div>
+          <p className="small"><b>영향</b> {p.impact}</p><p className="small"><b>원인</b> {p.cause}</p><p className="small"><b>재발 방지</b> {p.fix}</p></div></Card>)}</div></section>}
+        {d.d.townhalls.length > 0 && <section><h2>타운홀 기록</h2><Card kind="flat"><div className="stack" style={{ gap: 10 }}>{d.d.townhalls.map((t) => <p key={t.label} className="small"><b>{t.label}</b> {t.text}</p>)}</div></Card></section>}
+      </>}
+    </div>
+  );
+}
+
 function Calendar({ s }: { s: Session }) {
-  const r = useGet<{ today: string; items: CalEvent[] }>(s, "/company/calendar?days=200");
-  if (r.bad) return <Failed what="달력" onRetry={r.load} />;
-  if (!r.d) return <Skeletons />;
-  return r.d.items.length === 0 ? <Empty>예정된 일정이 없어요.</Empty> :
-    <Card kind="flat"><div className="stack" style={{ gap: 10 }}>{r.d.items.map((e) => <div key={e.date + e.title} className="row" style={{ opacity: e.date < r.d!.today ? .55 : 1 }}>
-      <span className="mono small faint" style={{ width: 120 }}>{e.date} ({dow(e.date)})</span><Badge kind={e.kind === "deadline" ? "warn" : e.kind === "holiday" ? "ok" : ""}>{EV_KO[e.kind] ?? e.kind}</Badge><span className="grow">{e.title}</span></div>)}</div></Card>;
+  const [year, setYear] = useState(2026);
+  const r = useGet<{ today: string; items: CalEvent[] }>(s, `/company/calendar?year=${year}`);
+  return (
+    <div className="stack">
+      <div className="row wrap"><button className="btn sm" onClick={() => setYear(year - 1)} disabled={year <= 2019} aria-label="이전 해">‹</button><b style={{ fontSize: 18 }}>{year}년</b><button className="btn sm" onClick={() => setYear(year + 1)} disabled={year >= 2027} aria-label="다음 해">›</button>
+        <span className="small muted">공휴일(주요 날짜)과 사내 정례 행사예요. 주말에는 행사를 잡지 않아요.</span></div>
+      {r.bad ? <Failed what="달력" onRetry={r.load} /> : !r.d ? <Skeletons /> : r.d.items.length === 0 ? <Empty>일정이 없어요.</Empty> :
+        <Card kind="flat"><div className="stack" style={{ gap: 10 }}>{r.d.items.map((e) => <div key={e.date + e.title} className="row" style={{ opacity: e.date < r.d!.today ? .55 : 1 }}>
+          <span className="mono small faint" style={{ width: 120 }}>{e.date} ({dow(e.date)})</span><Badge kind={e.kind === "deadline" ? "warn" : e.kind === "holiday" ? "ok" : ""}>{EV_KO[e.kind] ?? e.kind}</Badge><span className="grow">{e.title}</span></div>)}</div></Card>}
+    </div>
+  );
 }
 
 export default function Company({ s }: { s: Session }) {
   const [tab, setTab] = useState("home");
-  const T = [["home", "개요·연혁"], ["parties", "고객·거래처"], ["wiki", "위키"], ["gloss", "용어집"], ["cal", "달력"]];
+  const T = [["home", "개요·연혁"], ["parties", "고객·거래처"], ["wiki", "위키"], ["years", "연도별 기록"], ["gloss", "용어집"], ["cal", "달력"]];
   return (
     <>
       <PageHead title="회사" sub="이미 운영 중인 회사의 제품, 고객, 규정, 달력이에요. 모두 가상이고, 서로 일관되게 맞물려 있어요." />
       <div className="tabs" role="tablist" data-guide="company-tabs">{T.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}</div>
-      {tab === "home" ? <Home s={s} /> : tab === "parties" ? <Parties s={s} onOwner={(id) => { location.hash = `#/org?person=${id}`; }} /> : tab === "wiki" ? <Wiki s={s} /> : tab === "gloss" ? <Glossary s={s} /> : <Calendar s={s} />}
+      {tab === "home" ? <Home s={s} /> : tab === "parties" ? <Parties s={s} onOwner={(id) => { location.hash = `#/org?person=${id}`; }} /> : tab === "wiki" ? <Wiki s={s} /> : tab === "years" ? <Years s={s} /> : tab === "gloss" ? <Glossary s={s} /> : <Calendar s={s} />}
     </>
   );
 }

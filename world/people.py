@@ -151,7 +151,23 @@ def build():
             for p in people:
                 if p["dept_key"] == d["key"] and p["unit"] == uname:
                     p["manager_id"] = head["id"] if p["id"] == lead_id else lead_id
+    _align_hire_dates(people)
     return people
+
+
+def _align_hire_dates(people):
+    """Hire dates must agree with company history (world/archive.py): the Busan center opened 2023-12, so its staff were hired from 2023-09 on
+    (the head moved over); interns and contractors are recent. Uses its own seeded draws, so names and ids elsewhere never change."""
+    import zlib
+    for p in people:
+        lo = None
+        if p["dept_key"] == "center" and p["position"] != "센터장" and p["position"] != "팀장":
+            lo = date(2023, 9, 1)
+        elif p.get("employment") in ("계약직", "인턴"):
+            lo = date(2022, 3, 1)
+        if lo and date.fromisoformat(p["hire_date"]) < lo:
+            span = (date(2026, 9, 30) - lo).days
+            p["hire_date"] = (lo + timedelta(days=zlib.crc32(("hire" + p["id"]).encode()) % span)).isoformat()
 
 
 def org_summary(people):

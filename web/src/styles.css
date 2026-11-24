@@ -267,3 +267,9 @@ body { font-variant-numeric: tabular-nums; }
 .timeline li { display: grid; grid-template-columns: 72px 1fr; gap: 12px; position: relative; } .timeline li::before { content: ""; position: absolute; left: -24px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg); }
 .gloss { margin: 0; display: grid; gap: 14px; } .gloss dd { margin: 2px 0 0; color: var(--text-2); }
 @media (max-width: 800px) { .timeline li { grid-template-columns: 1fr; gap: 2px; } }
+
+.bars { display: flex; align-items: flex-end; gap: 8px; height: 160px; }
+.bars button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; min-width: 44px; border: 0; background: none; cursor: pointer; border-radius: 12px; padding: 4px; }
+.bars .bar { width: 100%; max-width: 56px; border-radius: 8px 8px 2px 2px; background: var(--surface-2); border: 1px solid var(--ctl-border); }
+.bars button.on .bar { background: var(--accent); border-color: var(--accent); } .bars button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; } .tbl th, .tbl td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border); } .tbl th:first-child, .tbl td:first-child { text-align: left; } .tbl th { color: var(--text-2); font-weight: 600; }

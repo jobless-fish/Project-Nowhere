@@ -104,3 +104,63 @@ def test_customer_table_agrees_with_the_history(c):
     assert (by["한빛손해보험"]["since"], by["한빛손해보험"]["product"], by["한빛손해보험"]["stage"]) == ("2020-06", "노웨어 클레임", "운영")
     assert by["다온생명"]["product"] == "노웨어 언더" and by["청솔GA"]["since"] == "2022-10"
     assert all(x["since"] <= "2026-11" for x in by.values())
+
+
+# ---- seven years of records ----
+from world import archive as arch  # noqa: E402
+
+
+def _qs(c):
+    from datetime import date
+    return arch.quarters(store.users, co.customers(store.users, date(2026, 11, 24)))
+
+
+def test_every_year_since_founding_has_records(c):
+    ys = c.get("/company/years").json()["items"]
+    assert [y["year"] for y in ys] == list(range(2019, 2027))
+    assert ys[-1]["in_progress"] and ys[-1]["headcount"] == 217
+    for y in ys:
+        d = c.get(f"/company/years/{y['year']}").json()
+        assert d["quarters"] and d["events"] and (d["townhalls"] or y["year"] < 2020)
+    assert c.get("/company/years/2018").status_code == 404
+
+
+def test_numbers_are_monotone_and_agree_with_the_roster(c):
+    qs = _qs(c)
+    assert [q["headcount"] for q in qs] == sorted(q["headcount"] for q in qs)         # growth only
+    assert qs[-1]["headcount"] == len(store.users)
+    assert all(q["headcount"] >= sum(1 for u in store.users.values() if u["hire_date"] <= q["end"]) for q in qs)   # survivors are a lower bound
+    assert [q["customers"] for q in qs] == sorted(q["customers"] for q in qs)
+    assert qs[0]["customers"] == 0 and qs[0]["revenue_eok"] == 0
+    assert all(q["p1"] + q["p2"] >= sum(1 for p in arch.POSTMORTEMS if p[0][:4] == str(q["year"]) and (int(p[0][5:7]) - 1) // 3 + 1 == q["quarter"]) for q in qs)
+
+
+def test_nobody_is_a_customer_before_the_product_or_market_existed(c):
+    for x in c.get("/company/customers").json()["items"]:
+        if x["kind"] != "고객사":
+            continue
+        assert x["since"] >= "2020-06"
+        if "언더" in x["product"] and "클레임" not in x["product"]:
+            assert x["since"] >= "2023-05"
+        if x["group"] == "ga":
+            assert x["since"] >= "2022-10"
+
+
+def test_staff_hired_after_the_office_opened_and_executives_in_history(c):
+    busan = [u for u in store.users.values() if u["dept_key"] == "center" and u["position"] not in ("센터장", "팀장")]
+    assert busan and min(u["hire_date"] for u in busan) >= "2023-09"
+    ev = {(e["month"], e["title"]) for e in arch.events_all(store.users, co.customers(store.users))}
+    head = next(u for u in store.users.values() if u["position"] == "본부장" and u["dept"] == "개발본부")
+    assert (head["hire_date"][:7], "개발본부 본부장 합류") in ev
+
+
+def test_calendar_covers_every_year_with_real_holidays_and_no_weekend_company_events(c):
+    from datetime import date
+    for y in range(2019, 2028):
+        ev = arch.all_events(y, y)
+        assert any(e["title"] == "추석" for e in ev) and any(e["title"] == "성탄절" for e in ev)
+        for e in ev:
+            if e["kind"] in ("company", "deadline") and e["title"] != "정전":
+                assert date.fromisoformat(e["date"]).weekday() < 5 or "정전" in e["title"], e
+    assert c.get("/company/calendar", params={"year": 2021}).json()["items"]
+    assert c.get("/company/calendar", params={"year": 2030}).status_code == 404
