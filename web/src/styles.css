@@ -4,13 +4,13 @@
    Depth is soft and from ONE light source (top-left): sections/buttons are raised, fields/tracks are sunken. Depth is decoration:
    it never carries meaning alone, so every control keeps its outline and label. */
 :root {
-  --bg: #f9f5ea; --surface: #fefcf6; --surface-2: #f2ebdb; --border: #e9e0cb; --rule: #2b2620; --edge: rgb(255 255 255 / .55);
+  --bg: #fcfaf3; --surface: #fffefb; --surface-2: #f7f2e6; --border: #eee6d3; --rule: #2b2620; --edge: rgb(255 255 255 / .55);
   --text: #2b2620; --text-2: #5a5043; --text-3: #6b604f;
-  --accent: #1d5bc4; --accent-hover: #184eab; --accent-press: #134191; --on-accent: #ffffff; --accent-soft: #e0eaf8; --focus: #1d5bc4;
+  --accent: #1d5bc4; --accent-hover: #184eab; --accent-press: #134191; --on-accent: #ffffff; --accent-soft: #e8f0fb; --focus: #1d5bc4;
   --ctl-border: #867a66;                      /* >= 3.2:1 on every cream surface: outline of every control */
   --danger: #a8261c; --danger-soft: #f8e4de; --warn: #82530a; --warn-soft: #f6e8c6; --ok: #1a6a42; --ok-soft: #e4f0e0;
   --r-ctl: 14px; --r-card: 20px; --r-pill: 999px; --ctl-h: 44px;
-  --sh-d: rgb(150 128 90 / .27); --sh-l: rgb(255 255 255 / .95);                /* shadow side / light side */
+  --sh-d: rgb(150 128 90 / .22); --sh-l: rgb(255 255 255 / 1);                /* shadow side / light side */
   --shadow-low: 5px 5px 12px var(--sh-d), -5px -5px 12px var(--sh-l);          /* raised section */
   --shadow-mid: 9px 9px 20px var(--sh-d), -9px -9px 20px var(--sh-l);          /* raised, floating (bubbles, dialogs) */
   --shadow-btn: 3px 3px 7px var(--sh-d), -3px -3px 7px var(--sh-l);            /* raised control */
@@ -241,3 +241,18 @@ input, textarea, select { background: var(--surface-2); box-shadow: var(--shadow
 .facts { display: grid; grid-template-columns: 56px 1fr; gap: 4px 12px; margin: 0; font-size: 14px; } .facts dt { color: var(--text-3); } .facts dd { margin: 0; overflow-wrap: anywhere; }
 a.btn { text-decoration: none; } .pbtn { border: 1px solid var(--border); cursor: pointer; min-height: 32px; } .pbtn:hover { background: var(--accent-soft); }
 @media (max-width: 800px) { .orgside { position: static; } }
+
+
+/* ===== Raised, not sunken: panels, selections and the chat well all rise from the page. Only text fields stay recessed. ===== */
+:root { --shadow-flat: 3px 3px 9px var(--sh-d), -3px -3px 9px var(--sh-l); }
+.card.flat { border-color: var(--edge); box-shadow: var(--shadow-flat); background: var(--surface); }
+.nav a[aria-current="page"] { background: var(--surface); box-shadow: var(--shadow-btn); }
+.nav a[aria-current="page"]:hover { box-shadow: var(--shadow-btn); }
+.list button[aria-current="true"] { background: var(--accent-soft); box-shadow: var(--shadow-btn); position: relative; z-index: 1; border-radius: 12px; border-bottom-color: transparent; }
+.orgunits button[aria-current="true"] { box-shadow: var(--shadow-btn); }
+.chatlog { background: var(--surface-2); box-shadow: var(--shadow-flat); }
+.seg-filter { background: var(--surface-2); box-shadow: var(--shadow-flat); }
+.seg { background: var(--surface-2); box-shadow: var(--shadow-flat); }
+.tabs button[aria-selected="true"] { background: var(--surface); box-shadow: var(--shadow-btn); }
+input, textarea, select { background: var(--surface); box-shadow: inset 2px 2px 5px var(--sh-d), inset -2px -2px 5px var(--sh-l); }
+.picker-box { background: var(--surface); box-shadow: inset 2px 2px 5px var(--sh-d), inset -2px -2px 5px var(--sh-l); }
