@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, errText } from "../api";
 import { useLive } from "../live";
-import type { ActionStats, AutonomyRow, Doc, EvalSummary, Metrics } from "../types";
+import type { ActionStats, AutonomyRow, Doc, EvalSummary, Metrics, MuteCandidate } from "../types";
 import { Badge, Card, Empty, PageHead, Skeletons, Failed } from "../ui";
 
 const nf = new Intl.NumberFormat("ko-KR");
@@ -124,6 +124,19 @@ function Proposals() {
 const CASE_KO: Record<string, string> = { "todo:positive": "할일 · 맞았음(완료)", "todo:negative": "할일 · 틀렸음(관련 없음)",
   "reply:accepted": "초안 · 그대로 발송", "reply:edited": "초안 · 사람이 수정", "reply:rejected": "초안 · 반려" };
 
+function Candidates() {
+  const [c, setC] = useState<MuteCandidate[] | null>(null);
+  useEffect(() => { api.get<{ items: MuteCandidate[] }>("/assistant/mutes/candidates").then((r) => setC(r.items)).catch(() => setC([])); }, []);
+  if (!c || c.length === 0) return null;
+  return (
+    <Card kind="flat"><div className="stack" style={{ gap: 8 }}>
+      <b>여러 명이 "관련 없음"으로 숨긴 종류 — 규칙 검토 후보</b>
+      <p className="small muted">한 사람의 클릭은 그 사람에게만 적용돼요. 여러 사람이 같은 종류를 숨기면 여기에 올라오고, 규칙을 바꿀지는 사람이 정해요(자동으로 바뀌지 않아요).</p>
+      {c.map((x) => <div key={x.sig} className="row wrap"><span className="grow">{x.title}</span><Badge>{x.source === "mail" ? "메일" : x.source === "notice" ? "공지" : x.source}</Badge><span className="small muted">{x.users}명</span></div>)}
+    </div></Card>
+  );
+}
+
 function Learning() {
   const [sm, setSm] = useState<EvalSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -141,6 +154,7 @@ function Learning() {
         {sm.new && <span className="small muted">새 사례: 할일 {sm.new.todo}건 · 초안 {sm.new.reply}건</span>}</div>
       {sm.total === 0 ? <Empty>아직 모은 사례가 없습니다. 홈에서 할일을 완료하거나 "관련 없음"을 누르고, 초안을 수정해 보세요.</Empty> :
         <div className="grid">{Object.entries(sm.by).map(([k, n]) => <div key={k} className="card stat"><b>{n}</b><span>{CASE_KO[k] ?? k}</span></div>)}</div>}
+      <Candidates />
       <p className="small faint">실제 서비스에서는 사례 수집 전에 직원 동의, 개인정보 마스킹, 보관 기간 정책이 필요합니다.</p>
     </div>
   );

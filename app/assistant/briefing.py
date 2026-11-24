@@ -124,7 +124,9 @@ def build_briefing(user, items, client) -> dict:
     out["todos"] = kept
     out["degraded"] = degraded
     out["flagged"] = [{"id": i.id, "title": i.title, "reason": "지시문 의심 — 자동 처리에서 제외됨"} for i in flagged]
-    out["sources"] = {i.id: {"title": i.title, "source": i.source, "sender": i.sender} for i in items}
+    # body/severity/mine are what "관련 없음" needs to decide whether an item may be hidden (assistant/mute.py); the body is cut short
+    out["sources"] = {i.id: {"title": i.title, "source": i.source, "sender": i.sender, "body": i.body[:300], "severity": i.severity, "mine": i.assignee == user.id}
+                      for i in items}
     return out
 
 

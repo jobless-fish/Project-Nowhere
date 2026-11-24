@@ -20,7 +20,7 @@ HERE = Path(__file__).parent
 
 
 def score(cases: list[dict], client) -> dict:
-    from app.assistant import actions
+    from app.assistant import actions, mute
     from app.assistant.briefing import build_briefing
     from app.assistant.sources import Item, User
 
@@ -28,15 +28,23 @@ def score(cases: list[dict], client) -> dict:
     todo_total = todo_pass = 0
     sims, rejected_total, rejected_changed = [], 0, 0
     failures = []
+    guarded_cases = 0
     for c in cases:
         p, user = c["payload"], None
         user = User(**p["user"])
         if c["kind"] == "todo":
             items = [mk(i) for i in p["items"]]
+            wanted = [i for i in items if i.id in p["source_ids"]]
+            guarded = c["label"] == "negative" and any(mute.guard_reason(i.source, i.title, i.body, i.severity, i.assignee == user.id) for i in wanted)
+            if c["label"] == "negative" and not guarded:
+                # what a "관련 없음" click does in production: this kind of item is hidden for this person (assistant/mute.py)
+                items = mute.personalize(user.id, items, {mute.sig_of(i) for i in wanted})
             b = build_briefing(user, items, client)
             cited = {i for t in b["todos"] for i in t["source_ids"]}
             hit = bool(cited & set(p["source_ids"]))
-            ok = hit if c["label"] == "positive" else not hit
+            # positive: must still be a todo. negative: must be gone -- unless it is guarded (mandatory notice, money signal, my P1/P2), where staying is the policy
+            ok = hit if (c["label"] == "positive" or guarded) else not hit
+            guarded_cases += guarded
             todo_total += 1; todo_pass += ok
             if not ok:
                 failures.append(f"{c['label']} todo still wrong: {p['title']}")
@@ -48,7 +56,7 @@ def score(cases: list[dict], client) -> dict:
                 sims.append(difflib.SequenceMatcher(None, body, p["final"] or p["draft"]).ratio())
     return {"todo_cases": todo_total, "todo_pass_rate": round(todo_pass / todo_total, 3) if todo_total else None,
             "reply_cases": len(sims), "reply_similarity": round(sum(sims) / len(sims), 3) if sims else None,
-            "rejected_cases": rejected_total, "rejected_changed": rejected_changed, "failures": failures}
+            "rejected_cases": rejected_total, "rejected_changed": rejected_changed, "guarded_cases": guarded_cases, "failures": failures}
 
 
 def compare(current: dict, baseline: dict, tol: float) -> list[str]:

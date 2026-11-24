@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api, errText, world } from "../api";
-import type { Action, Briefing, Session, Todo } from "../types";
+import type { Action, Briefing, MuteRule, Session, Todo } from "../types";
 import Reply from "./Reply";
 import { Badge, Card, Icon, PageHead, Skeletons, SourceChip } from "../ui";
 import { useLive } from "../live";
@@ -21,6 +21,7 @@ export default function Home({ s }: { s: Session }) {
   const [msg, setMsg] = useState<{ key: string; text: string } | null>(null);
   const uid = s.user.id;
   const live = useLive();
+  const [mutes, setMutes] = useState<MuteRule[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -73,9 +74,24 @@ export default function Home({ s }: { s: Session }) {
   };
   const mark = async (t: Todo, value: string) => {
     const next = fb[t.key] === value ? "" : value;
-    setFb({ ...fb, [t.key]: next });
-    if (next) await api.post("/assistant/feedback", { user_id: uid, todo_key: t.key, value: next }).catch(() => {});
+    if (!next) { setFb({ ...fb, [t.key]: "" }); return; }
+    setMsg(null);
+    try {
+      const r = await api.post<{ muted: string[] }>("/assistant/feedback", { user_id: uid, todo_key: t.key, value: next });
+      setFb({ ...fb, [t.key]: next });
+      if (value === "wrong" && r.muted.length) {
+        live.toast({ kind: "ok", text: "이런 종류의 항목은 앞으로 이 목록에 올리지 않을게요.", actions: [{ label: "되돌리기", run: () => { void undo(r.muted); } }] });
+        void loadMutes();
+      }
+    } catch (e) { setMsg({ key: t.key, text: errText(e, "표시하지 못했어요. 잠시 뒤에 다시 해 주세요.") }); }
   };
+  const loadMutes = useCallback(async () => { setMutes((await api.get<{ items: MuteRule[] }>(`/assistant/mutes?user_id=${uid}`).catch(() => ({ items: [] }))).items); }, [uid]);
+  const undo = async (sigs: string[]) => {
+    for (const sig of sigs) await api.post("/assistant/mutes/remove", { user_id: uid, sig }).catch(() => {});
+    await api.post("/assistant/briefing/refresh", { user_id: uid }).catch(() => {});
+    await Promise.all([load(), loadMutes()]);
+  };
+  useEffect(() => { void loadMutes(); }, [loadMutes]);
 
   if (state === "loading") return <><PageHead title="홈" /><Skeletons /></>;
   if (!b) return (
@@ -154,7 +170,8 @@ export default function Home({ s }: { s: Session }) {
         {done.length > 0 && <section data-guide="done"><h2>처리한 일 ({done.length})</h2><Card kind="flat"><div className="stack">
           {done.map((t) => <div key={t.key} className="row wrap"><Badge kind="ok">완료</Badge><span className="grow"><b>{t.title}</b><div className="small muted">{t.flow?.outcome || "완료로 표시했어요"}</div></span>
             <button className="btn quiet sm" onClick={() => (t.flow ? act(t, "reopen") : mark(t, "done"))}>다시 열기</button></div>)}</div></Card></section>}
-        {b.todos.some(dropped) && <p className="small faint">제외한 항목 {b.todos.filter(dropped).length}건 — 비서 개선에 사용됩니다.</p>}
+        {mutes.length > 0 && <details className="muted-list"><summary className="small muted">내가 숨긴 종류 {mutes.length}가지 · 비서 개선에도 쓰여요</summary><div className="stack" style={{ gap: 6, marginTop: 8 }}>
+          {mutes.map((m) => <div key={m.sig} className="row wrap"><span className="grow small">{m.title}</span><button className="btn quiet sm" onClick={() => undo([m.sig])}>다시 보기</button></div>)}</div></details>}
       </div>
     </>
   );

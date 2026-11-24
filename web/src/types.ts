@@ -50,3 +50,5 @@ export type PnlY = { year: number; revenue: number; cost: number; profit: number
 export type Finance = { quarters: PnlQ[]; years: PnlY[]; runway: { cash: number; monthly_burn: number; months: number | null }; funding: { month: string; eok: number; round: string }[] };
 export type Budget = { dept: string; headcount: number; budget: number; payroll_plan: number; program_plan: number; actual: number; used: number; pace: number; over_pace: boolean };
 export type Target = { year: number; revenue_plan: number; revenue_actual: number; revenue_attain: number; uptime_target: number; uptime_actual: number; uptime_ok: boolean; new_customers: number; in_progress: boolean };
+export type MuteRule = { sig: string; title: string; source: string; created_at: string };
+export type MuteCandidate = { sig: string; title: string; source: string; users: number };

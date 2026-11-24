@@ -30,9 +30,10 @@ def use(c, uid="u_kim"):
 def test_harvest_labels_and_is_idempotent(env):
     c = env
     b, k = use(c)
-    c.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k("ntc-n1"), "value": "wrong"})
+    refused = c.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k("ntc-n1"), "value": "wrong"})   # a mandatory notice cannot be hidden
+    assert refused.status_code == 409
+    assert c.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k("mail-mk2"), "value": "wrong"}).status_code == 200
     c.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k("iss-i1"), "value": "done"})
-    c.post("/assistant/feedback", json={"user_id": "u_kim", "todo_key": k("mail-mk2"), "value": "dismissed"})   # not a clear signal
     a = c.post("/assistant/actions/propose", json={"user_id": "u_kim", "todo_key": k("mail-mk1")}).json()
     c.post(f"/assistant/actions/{a['id']}/decision", json={"user_id": "u_kim", "approve": True, "body": "고친 본문입니다."})
     first = c.post("/assistant/eval/harvest").json()

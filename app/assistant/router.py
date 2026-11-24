@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from .. import db
 from ..llm import get_client
 from .. import autonomy
-from . import actions, flow, flywheel, guide
+from . import actions, flow, flywheel, guide, mute
 from .briefing import build_briefing, build_digest
 from .sources import get_source
 
@@ -88,7 +88,7 @@ def _clock_in(user_id: str):
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user.id, day)).fetchone()
     if row:  # clocking in twice must not regenerate (cost) or change the list the user is working from
         return {"clock_in_at": at, "briefing": flow.attach(user.id, json.loads(row[0])), "cached": True}
-    items = get_source().fetch(user, hours=24)
+    items = mute.personalize(user.id, get_source().fetch(user, hours=24))
     brief = build_briefing(user, items, get_client())
     brief["user"] = user.__dict__
     with db.conn() as c:
@@ -136,10 +136,51 @@ def feedback(body: Feedback):
     _user(body.user_id)
     if body.value not in ("done", "dismissed", "wrong"):
         raise HTTPException(422, "value must be done|dismissed|wrong")
+    muted_kinds = []
+    if body.value == "wrong":                       # "this is not a todo for me": hide that KIND of item for this person, unless it is guarded
+        t = _todo(body.user_id, body.todo_key)
+        brief = _briefing_payload(body.user_id)
+        for sid in t["source_ids"]:
+            src = brief["sources"].get(sid, {})
+            why = mute.guard_reason(src.get("source", ""), src.get("title", ""), src.get("body", ""), src.get("severity"), src.get("mine", False))
+            if why:
+                raise HTTPException(409, why)
+        for sid in t["source_ids"]:
+            src = brief["sources"].get(sid, {})
+            if src.get("title"):
+                sg = mute.signature(src["source"], src["title"])
+                mute.add(body.user_id, sg, src["title"], src["source"])
+                muted_kinds.append(sg)
     with db.conn() as c:
         c.execute("INSERT OR REPLACE INTO todo_feedback(user_id,day,todo_key,value) VALUES(?,?,?,?)",
                   (body.user_id, _today(), body.todo_key, body.value))
+    return {"ok": True, "muted": muted_kinds}
+
+
+@router.get("/mutes")
+def mutes(user_id: str):
+    _user(user_id)
+    return {"items": mute.listing(user_id)}
+
+
+class Unmute(BaseModel):
+    user_id: str
+    sig: str
+
+
+@router.post("/mutes/remove")
+def unmute(b: Unmute):
+    _user(b.user_id)
+    if not mute.remove(b.user_id, b.sig):
+        raise HTTPException(404, "no such rule")
+    with db.conn() as c:                             # also clear today's "wrong" marks so the card can come back on refresh
+        c.execute("DELETE FROM todo_feedback WHERE user_id=? AND day=? AND value='wrong'", (b.user_id, _today()))
     return {"ok": True}
+
+
+@router.get("/mutes/candidates")
+def mute_candidates():
+    return {"items": mute.candidates(2)}
 
 
 @router.get("/feedback")
@@ -253,6 +294,14 @@ def diag():
     return out
 
 
+def _briefing_payload(user_id: str) -> dict:
+    with db.conn() as c:
+        row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, _today())).fetchone()
+    if not row:
+        raise HTTPException(404, "not clocked in yet")
+    return json.loads(row[0])
+
+
 def _todo(user_id: str, key: str) -> dict:
     with db.conn() as c:
         row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, _today())).fetchone()
@@ -310,7 +359,7 @@ def briefing_refresh(b: ClockIn):
     if not old:
         raise HTTPException(404, "not clocked in yet")
     before = {t["key"] for t in json.loads(old[0])["todos"]}
-    brief = build_briefing(user, get_source().fetch(user, hours=24), get_client())
+    brief = build_briefing(user, mute.personalize(user.id, get_source().fetch(user, hours=24)), get_client())
     brief["user"] = user.__dict__
     with db.conn() as c:
         c.execute("UPDATE briefings SET payload=? WHERE user_id=? AND day=?", (json.dumps(brief, ensure_ascii=False), user.id, _today()))

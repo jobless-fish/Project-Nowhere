@@ -131,6 +131,11 @@ def seed(now: datetime | None = None) -> bool:
                        "sent" if st in ("sent", "sent_edited") else st, int(st == "sent_edited"), "민감 표현이 있어 발송을 막았어요." if st == "blocked" else None, ts, ts))
             if st in ("sent", "sent_edited", "rejected"):
                 c.execute("INSERT INTO outcomes(document_id,doc_type,mode,agree,created_at) VALUES(?,?,?,?,?)", (0, "reply_internal", "assisted", int(st == "sent"), ts))
+        for sg, title, src, users in [("mail|연차 사용 현황 안내", "연차 사용 현황 안내", "mail", ["e266", "e143", "u_kim", "u_dev2"]),
+                                      ("mail|사내 행사 안내 11월 마지막 금요일 점심 모임", "사내 행사 안내: 11월 마지막 금요일 점심 모임", "mail", ["e266", "u_kim", "e213"]),
+                                      ("notice|사옥 주차 이용 안내", "사옥 주차 이용 안내", "notice", ["u_dev1", "u_dev2"])]:
+            for u in users:
+                c.execute("INSERT OR IGNORE INTO todo_mute(user_id,sig,title,source) VALUES(?,?,?,?)", (u, sg, title, src))
         for i, (kind, label, payload) in enumerate([
                 ("todo", "negative", {"title": "광고 메일 확인", "reason": "프로모션 문구가 있음"}), ("todo", "negative", {"title": "주간 뉴스레터 읽기", "reason": "알림성 메일"}),
                 ("todo", "positive", {"title": "결제 장애 재발 방지 대책 승인", "reason": "P1 이슈, 담당자 본인"}), ("todo", "positive", {"title": "정보보안 교육 이수", "reason": "마감이 있는 필수 공지"}),
