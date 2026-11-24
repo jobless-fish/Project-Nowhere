@@ -19,7 +19,7 @@ def main() -> int:
     from app.llm import get_client
 
     db.init()
-    if "--world" in sys.argv:  # in-process FinBridge systems (same HTTP contract as a remote deployment)
+    if "--world" in sys.argv:  # in-process Nowhere systems (same HTTP contract as a remote deployment)
         from fastapi.testclient import TestClient
         from app.assistant.world_source import WorldSource
         from world.main import app as world_app

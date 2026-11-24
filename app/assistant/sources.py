@@ -58,7 +58,7 @@ class FixtureSource:
 
 
 def get_source():
-    """SOURCE=fixture (default, offline demo) | world (FinBridge systems at WORLD_URL)."""
+    """SOURCE=fixture (default, offline demo) | world (Nowhere systems at WORLD_URL)."""
     import os
     if os.getenv("SOURCE", "fixture") == "world":
         import httpx
