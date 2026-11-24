@@ -7,15 +7,20 @@ Fictional company "Nowhere" (노웨어). Everything in this repo is fictional; k
 - Web: `cd web && npx tsc --noEmit` (must pass) · run: `./run_demo.sh` + `cd web && npm run dev`
 
 ## Design direction (decided with the owner)
-Friendly big Pretendard type (800, tight tracking) on a ruled grid: 2px rules under page heads / between site sections, mono `↳` labels,
-one accent blue (`--accent`, text on it 4.5:1), rounded 14px controls / 20px cards. Site footer has the giant `nowhere` wordmark.
-Voice is 해요체 on the site. Do not add a second accent colour or decorative gradients.
+**App (`web/`)**: cream paper (`--bg #f9f5ea`), friendly big Pretendard type (800, tight tracking) on a ruled grid (2px rules under page heads, mono `↳` labels),
+one accent blue. **Light is the default, even when the OS is dark**; dark is opt-in (toggle: light -> dark -> auto). Cream was chosen by the owner:
+do not add a serif or terracotta to "complete" it, and no second accent colour.
+**Soft depth (neumorphic), from ONE light source at the top-left**: sections and buttons are raised (`--shadow-low/btn`), fields, tracks and pressed
+items are sunken (`--shadow-in`). Depth is decoration only: every control keeps its outline (3:1), its label and its 44px hit area, and state is never
+shown by shadow alone. Pressing swaps raised -> sunken instantly; never animate `box-shadow`.
+**Site (`site/`)** is still white + blue with the ruled grid and the giant wordmark. Tell the owner if you change one without the other.
+Voice is 해요체 on the site.
 
 ## Control rulebook (web/src/styles.css `.btn`, `.check`, inputs)
 - Six states for every control: default, hover, active(pressed), focus-visible, disabled, loading (`aria-busy`). See `#/controls` in the app.
 - Hit area >= 44px (`--ctl-h`); control outline 3:1 (`--ctl-border`); "on" is never shown by colour alone (checkbox has a glyph).
 - Press = `transform` only. Never animate `box-shadow`. Hover < 100ms, press < 150ms, settle ~220ms; respect `prefers-reduced-motion`.
-- One light source: shadows fall straight down (`--shadow-low/mid`). No ad-hoc shadows.
+- One light source (top-left): use only the shadow tokens (`--shadow-low/mid/btn/in`). No ad-hoc shadows.
 - After touching controls: open `#/controls`, screenshot light + dark, and run the hit-area / overflow check.
 
 ## UI rules (web/ and site/)

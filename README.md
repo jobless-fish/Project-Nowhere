@@ -10,6 +10,9 @@
 글꼴은 Pretendard(SIL OFL 1.1)를 `site/fonts/`에 자체 호스팅합니다(동적 서브셋이라 페이지에 필요한 글자 조각만 내려받음, 라이선스 파일 동봉). 메타 설명·Open Graph·파비콘·`sitemap.xml`·`robots.txt`가 들어 있고, 주소는 기본 Pages 주소(`jobless-fish.github.io/Project-Nowhere`)를 가정했습니다.
 로컬 확인: `python -m http.server -d site 8080`. GitHub Pages 배포: 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택하면 `site/` 변경 시 자동 배포됩니다.
 
+## 화면 모드
+기본은 **크림색 라이트 모드**(운영체제가 다크여도 라이트로 열려요). 오른쪽 위 버튼으로 라이트 → 다크 → 자동(운영체제 설정 따름)을 바꾸며, 선택은 저장돼요. 카드와 버튼은 살짝 떠 있고 입력창과 눌린 항목은 살짝 들어간 부드러운 입체감을 써요(색 대비와 버튼 윤곽은 접근성 기준을 지켜요).
+
 ## 별도 창(앱 창)으로 실행
 ```bash
 python launch.py        # 서버를 켜고 주소창·탭이 없는 독립 창을 띄워요. 창을 닫으면 서버도 종료돼요.

@@ -1,41 +1,45 @@
-/* ===== Nowhere app — friendly big type on a ruled grid. One accent: blue. =====
-   Controls follow one rulebook: 6 states, 44px hit area, press = transform (never animate shadows),
-   one light source (shadows fall straight down), text 4.5:1, control outlines 3:1. */
+/* ===== Nowhere app — light ivory-cream paper, soft depth, friendly big type on a ruled grid. One accent: blue. =====
+   Light is the DEFAULT (even if the OS is dark). Dark only when chosen: data-theme="dark", or "auto" to follow the OS.
+   Controls follow one rulebook: 6 states, 44px hit area, press = transform (no shadow animation), text 4.5:1, control outlines 3:1.
+   Depth is soft and from ONE light source (top-left): sections/buttons are raised, fields/tracks are sunken. Depth is decoration:
+   it never carries meaning alone, so every control keeps its outline and label. */
 :root {
-  --bg: #f2f4f6; --surface: #ffffff; --surface-2: #f2f4f6; --border: #e5e8eb; --rule: #191f28;
-  --text: #191f28; --text-2: #4e5968; --text-3: #5f6b7a;
-  --accent: #1b64da; --accent-hover: #1857bd; --accent-press: #1349a0; --on-accent: #ffffff; --accent-soft: #e8f3ff; --focus: #3182f6;
-  --ctl-border: #7a8493;                      /* 3.6:1 on white: outline of every control */
-  --danger: #c4281c; --danger-soft: #fef3f2; --warn: #93370d; --warn-soft: #fffaeb; --ok: #067647; --ok-soft: #ecfdf3;
+  --bg: #f9f5ea; --surface: #fefcf6; --surface-2: #f2ebdb; --border: #e9e0cb; --rule: #2b2620; --edge: rgb(255 255 255 / .55);
+  --text: #2b2620; --text-2: #5a5043; --text-3: #6b604f;
+  --accent: #1d5bc4; --accent-hover: #184eab; --accent-press: #134191; --on-accent: #ffffff; --accent-soft: #e0eaf8; --focus: #1d5bc4;
+  --ctl-border: #867a66;                      /* >= 3.2:1 on every cream surface: outline of every control */
+  --danger: #a8261c; --danger-soft: #f8e4de; --warn: #82530a; --warn-soft: #f6e8c6; --ok: #1a6a42; --ok-soft: #e4f0e0;
   --r-ctl: 14px; --r-card: 20px; --r-pill: 999px; --ctl-h: 44px;
-  /* one light source: every shadow is straight down, blur = 2 x offset */
-  --shadow-low: 0 1px 2px rgb(25 31 40 / .06), 0 2px 4px rgb(25 31 40 / .04);
-  --shadow-mid: 0 2px 4px rgb(25 31 40 / .05), 0 6px 12px rgb(25 31 40 / .06), 0 12px 24px rgb(25 31 40 / .05);
+  --sh-d: rgb(150 128 90 / .27); --sh-l: rgb(255 255 255 / .95);                /* shadow side / light side */
+  --shadow-low: 5px 5px 12px var(--sh-d), -5px -5px 12px var(--sh-l);          /* raised section */
+  --shadow-mid: 9px 9px 20px var(--sh-d), -9px -9px 20px var(--sh-l);          /* raised, floating (bubbles, dialogs) */
+  --shadow-btn: 3px 3px 7px var(--sh-d), -3px -3px 7px var(--sh-l);            /* raised control */
+  --shadow-in: inset 3px 3px 7px var(--sh-d), inset -3px -3px 7px var(--sh-l); /* sunken: fields, tracks, pressed */
   --t-hover: 90ms; --t-press: 120ms; --t-settle: 220ms; --ease: cubic-bezier(.2, .7, .2, 1);
   --font: "Pretendard Variable", Pretendard, -apple-system, "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f1217; --surface: #181c22; --surface-2: #20252d; --border: #2b313a; --rule: #f2f4f6;
-    --text: #f2f4f6; --text-2: #b0b8c1; --text-3: #8b95a1;
-    --accent: #4d94ff; --accent-hover: #6aa6ff; --accent-press: #86b6ff; --on-accent: #0b1220; --accent-soft: #13294a; --focus: #8ab8ff;
-    --ctl-border: #8b95a1;
-    --danger: #ff8f85; --danger-soft: #3a1613; --warn: #f5c06a; --warn-soft: #33260c; --ok: #5fd69b; --ok-soft: #10301f;
-    --shadow-low: 0 1px 2px rgb(0 0 0 / .5), 0 2px 4px rgb(0 0 0 / .3);
-    --shadow-mid: 0 2px 4px rgb(0 0 0 / .4), 0 6px 12px rgb(0 0 0 / .4), 0 12px 24px rgb(0 0 0 / .3);
+  :root[data-theme="auto"] {
+    --bg: #14110d; --surface: #1d1914; --surface-2: #27211a; --border: #373027; --rule: #f1e8d6; --edge: rgb(255 255 255 / .06);
+    --text: #f1e8d6; --text-2: #c2b8a4; --text-3: #9b917d;
+    --accent: #6aa6ff; --accent-hover: #86b6ff; --accent-press: #a2c6ff; --on-accent: #0b1220; --accent-soft: #1b2b45; --focus: #9cc2ff;
+    --ctl-border: #9b917d;
+    --danger: #ff9a8e; --danger-soft: #3b1a15; --warn: #f2c06e; --warn-soft: #382a10; --ok: #66d49c; --ok-soft: #14301f;
+    --sh-d: rgb(0 0 0 / .55); --sh-l: rgb(255 244 220 / .045);
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-    --bg: #0f1217; --surface: #181c22; --surface-2: #20252d; --border: #2b313a; --rule: #f2f4f6;
-    --text: #f2f4f6; --text-2: #b0b8c1; --text-3: #8b95a1;
-    --accent: #4d94ff; --accent-hover: #6aa6ff; --accent-press: #86b6ff; --on-accent: #0b1220; --accent-soft: #13294a; --focus: #8ab8ff;
-    --ctl-border: #8b95a1;
-    --danger: #ff8f85; --danger-soft: #3a1613; --warn: #f5c06a; --warn-soft: #33260c; --ok: #5fd69b; --ok-soft: #10301f;
-    --shadow-low: 0 1px 2px rgb(0 0 0 / .5), 0 2px 4px rgb(0 0 0 / .3);
-    --shadow-mid: 0 2px 4px rgb(0 0 0 / .4), 0 6px 12px rgb(0 0 0 / .4), 0 12px 24px rgb(0 0 0 / .3);
+    --bg: #14110d; --surface: #1d1914; --surface-2: #27211a; --border: #373027; --rule: #f1e8d6; --edge: rgb(255 255 255 / .06);
+    --text: #f1e8d6; --text-2: #c2b8a4; --text-3: #9b917d;
+    --accent: #6aa6ff; --accent-hover: #86b6ff; --accent-press: #a2c6ff; --on-accent: #0b1220; --accent-soft: #1b2b45; --focus: #9cc2ff;
+    --ctl-border: #9b917d;
+    --danger: #ff9a8e; --danger-soft: #3b1a15; --warn: #f2c06e; --warn-soft: #382a10; --ok: #66d49c; --ok-soft: #14301f;
+    --sh-d: rgb(0 0 0 / .55); --sh-l: rgb(255 244 220 / .045);
+    color-scheme: dark;
 }
-:root { color-scheme: light dark; } :root[data-theme="light"] { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
 button, input, textarea, select { font: inherit; color: inherit; }
@@ -82,7 +86,7 @@ code { font: 13px var(--mono); }
 .list button:focus-visible, .tabs button:focus-visible, .nav a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .btn:disabled, .btn.is-disabled { opacity: .5; cursor: not-allowed; transform: none; background: var(--surface); }
 .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; }
-.btn.primary:hover, .btn.primary.is-hover { background: var(--accent-hover); } .btn.primary:active, .btn.primary.is-active { background: var(--accent-press); }
+.btn.primary:hover, .btn.primary.is-hover { background: var(--accent-hover); } .btn.primary:active, .btn.primary.is-active { background: var(--accent-press); box-shadow: inset 2px 2px 4px rgb(0 0 0 / .32); }
 .btn.primary:disabled, .btn.primary.is-disabled { background: var(--accent); }
 .btn.quiet { border-color: transparent; background: transparent; color: var(--text-2); } .btn.quiet:hover, .btn.quiet.is-hover { background: var(--surface-2); color: var(--text); }
 .btn.sm { min-height: var(--ctl-h); padding: 0 14px; font-size: 14px; }  /* visual height stays 44 on purpose: hit area */
@@ -165,3 +169,29 @@ input[type="checkbox"] { width: 20px; min-height: 20px; accent-color: var(--acce
 @media (max-width: 800px) { .gsummon { bottom: 76px; } }
 
 .theme-toggle { position: fixed; top: 12px; right: 12px; z-index: 35; min-width: 44px; gap: 6px; box-shadow: var(--shadow-low); }
+
+
+/* ---------- Soft depth layer ---------- */
+.side { background: var(--bg); border-right: 0; box-shadow: 6px 0 16px -10px var(--sh-d); }
+.card { border: 1px solid var(--edge); box-shadow: var(--shadow-low); }
+.card.flat { border-color: transparent; box-shadow: var(--shadow-in); }
+.card.urgent { border-color: var(--danger); }
+.btn { box-shadow: var(--shadow-btn); }
+.btn:hover, .btn.is-hover { background: var(--bg); } .btn.primary:hover, .btn.primary.is-hover { background: var(--accent-hover); }
+.btn:active, .btn.is-active { box-shadow: var(--shadow-in); background: var(--surface-2); } .btn.primary:active, .btn.primary.is-active { background: var(--accent-press); box-shadow: inset 2px 2px 4px rgb(0 0 0 / .32); }
+.btn.quiet, .btn.quiet:active, .btn:disabled, .btn.is-disabled { box-shadow: none; } .btn.quiet:hover, .btn.quiet.is-hover { background: var(--surface-2); }
+input, textarea, select { background: var(--surface-2); box-shadow: var(--shadow-in); }
+.check .box { background: var(--surface-2); box-shadow: inset 2px 2px 4px var(--sh-d), inset -2px -2px 4px var(--sh-l); }
+.check[aria-checked="true"] .box { background: var(--accent); box-shadow: none; }
+.seg { background: var(--surface-2); box-shadow: var(--shadow-in); } .seg span.on { box-shadow: var(--shadow-btn); }
+.progress { box-shadow: var(--shadow-in); border-color: transparent; }
+.nav a[aria-current="page"] { background: var(--surface-2); box-shadow: var(--shadow-in); color: var(--accent); }
+.nav a:hover { background: transparent; box-shadow: var(--shadow-btn); }
+.nav a[aria-current="page"]:hover { box-shadow: var(--shadow-in); }
+.list button[aria-current="true"] { background: var(--surface-2); box-shadow: var(--shadow-in); }
+.tabs button[aria-selected="true"] { background: var(--surface-2); border-radius: 12px 12px 0 0; }
+.hero { box-shadow: var(--shadow-mid); }
+.login { background: var(--bg); }
+.user-pick { box-shadow: var(--shadow-btn); } .user-pick:hover { background: var(--surface); } .user-pick:active { box-shadow: var(--shadow-in); }
+.chip { background: var(--surface-2); }
+.banner { box-shadow: var(--shadow-btn); }
