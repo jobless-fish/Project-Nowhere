@@ -65,3 +65,25 @@ def test_closing_the_window_stops_the_server():
 def test_missing_screen_build_gives_a_clear_message(tmp_path, monkeypatch):
     monkeypatch.setattr(launch, "ROOT", tmp_path)
     assert launch.main(["--no-browser"]) == 2
+
+
+@needs_dist
+def test_terminal_close_or_kill_does_not_leave_the_server_running():
+    """Regression: SIGTERM/SIGHUP used to kill only the launcher and orphan the server."""
+    import signal
+    import pytest
+    if not hasattr(signal, "SIGHUP"):
+        pytest.skip("POSIX signals only")
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        port = launch.pick_port(0)
+        p = subprocess.Popen([sys.executable, "launch.py", "--no-browser", "--port", str(port)], cwd=ROOT, env={**os.environ, "PYTHONPATH": str(ROOT)},
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        for _ in range(80):
+            if port_open(port):
+                break
+            time.sleep(0.25)
+        assert port_open(port)
+        p.send_signal(sig)
+        assert p.wait(timeout=20) == 0
+        time.sleep(0.5)
+        assert not port_open(port), f"server orphaned after {sig.name}"

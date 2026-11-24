@@ -13,6 +13,7 @@ import argparse
 import os
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -91,6 +92,11 @@ def main(argv=None):
     if not (ROOT / "web" / "dist" / "index.html").exists():
         print("화면이 아직 빌드되지 않았어요. 먼저 한 번만 실행해 주세요:\n  cd web && npm install && npx vite build", file=sys.stderr)
         return 2
+    def _stop(*_):          # closing the terminal (SIGHUP) or `kill` (SIGTERM) must not leave the server running in the background
+        raise KeyboardInterrupt
+    for name in ("SIGTERM", "SIGHUP", "SIGBREAK"):
+        if hasattr(signal, name):
+            signal.signal(getattr(signal, name), _stop)
     port = pick_port(a.port)
     url = f"http://127.0.0.1:{port}"
     server = subprocess.Popen([sys.executable, "-m", "uvicorn", "server:combined", "--host", "127.0.0.1", "--port", str(port), "--log-level", "warning"], cwd=ROOT)
