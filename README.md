@@ -3,6 +3,10 @@
 
 구성: `app/`(비서·문서 처리 서비스) · `world/`(노웨어 사내 시스템: SSO·메일·메신저·이슈·포털·근태) · `eval/`(평가) · `tests/`
 
+## 공식 사이트 (`site/`)
+가상 기업 노웨어의 소개·제품·채용 페이지(정적 HTML, 빌드 없음). 모든 페이지 상단에 가상 기업 고지가 있고, 제품 화면은 실제 앱에서 캡처했습니다.
+로컬 확인: `python -m http.server -d site 8080`. GitHub Pages 배포: 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택하면 `site/` 변경 시 자동 배포됩니다.
+
 ## 실행 (화면 포함)
 ```bash
 pip install -r requirements.txt && (cd web && npm install)
