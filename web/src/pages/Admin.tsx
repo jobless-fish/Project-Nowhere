@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../api";
+import { api, errText } from "../api";
+import { useLive } from "../live";
 import type { ActionStats, AutonomyRow, Doc, EvalSummary, Metrics } from "../types";
 import { Badge, Card, Empty, PageHead, Skeletons, Failed } from "../ui";
 
@@ -18,29 +19,63 @@ const TYPE_KO: Record<string, string> = { reply_internal: "회신 초안 (사내
 const REASON = (t: string) => t.startsWith("collecting") ? "표본을 모으는 중입니다" : t.replace(/agreement lower bound ([\d.]+) >= ([\d.]+)/, "일치율 신뢰구간 하한 $1 ≥ 기준 $2").replace(/recent agreement (\d+)\/(\d+) too low/, "최근 일치 $1/$2건으로 기준 미달");
 const NEED = (t: string, m: string) => (m === "shadow" ? 20 : m === "assisted" ? (isReply(t) ? 20 : 30) : 0);
 
+const NEED_LB = (t: string, m: string) => (m === "shadow" ? 0.85 : isReply(t) ? 0.8 : 0.95);
+/** Why the type is where it is, in plain words, with what is still missing. */
+const WHY = (r: AutonomyRow) => {
+  if (r.reason.startsWith("collecting")) {
+    if (r.mode === "auto") return "최근 결과가 기준 이상이라 자동 단계를 유지해요";
+    const n = NEED(r.doc_type, r.mode), lb = NEED_LB(r.doc_type, r.mode);
+    if (r.samples < n) return `표본이 ${n - r.samples}건 더 쌓이면 승격 심사 대상이 돼요 (지금 ${r.samples}건)`;
+    return `표본은 충분하지만 일치율 신뢰구간 하한 ${r.lower_bound}이 기준 ${lb}에 못 미쳐요. 맞는 결과가 더 쌓여야 해요`;
+  }
+  return REASON(r.reason);
+};
+
 function Autonomy() {
+  const live = useLive();
   const [rows, setRows] = useState<AutonomyRow[] | null>(null);
   const [bad, setBad] = useState(false);
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState<{ type: string; text: string } | null>(null);
   const load = useCallback(() => { setBad(false); return api.get<AutonomyRow[]>("/autonomy").then(setRows).catch(() => setBad(true)); }, []);
   useEffect(() => { load(); }, [load]);
-  const promote = async (r: AutonomyRow) => { await api.post(`/autonomy/${r.doc_type}/mode`, { mode: r.recommended_mode }); load(); };
+  const setMode = async (r: AutonomyRow, mode: string, how: "approve" | "manual") => {
+    setBusy(r.doc_type); setErr(null);
+    try {
+      await api.post(`/autonomy/${r.doc_type}/mode`, { mode });
+      await load();
+      live.toast({ kind: "ok", text: `${TYPE_KO[r.doc_type] ?? r.doc_type}: ${modeName(r.doc_type, mode)} 단계로 ${how === "approve" ? "승격했어요" : "바꿨어요"}.` });
+    } catch (e) { setErr({ type: r.doc_type, text: errText(e, "단계를 바꾸지 못했어요. 서버 연결과 권한을 확인해 주세요.") }); }
+    setBusy("");
+  };
+  const click = (r: AutonomyRow, m: string) => {
+    if (m === r.mode) return;
+    const order = isReply(r.doc_type) ? ["assisted", "auto"] : MODES;
+    if (order.indexOf(m) > order.indexOf(r.mode) && m !== r.recommended_mode &&
+        !window.confirm(`근거(일치율)가 아직 기준에 못 미쳤어요.\n그래도 '${modeName(r.doc_type, m)}' 단계로 올릴까요? 사람이 직접 올린 것으로 기록돼요.`)) return;
+    void setMode(r, m, m === r.recommended_mode && order.indexOf(m) > order.indexOf(r.mode) ? "approve" : "manual");
+  };
   if (bad) return <Failed what="자동화 단계" onRetry={load} />;
   if (!rows) return <Skeletons />;
   return (
     <div className="stack">
-      <p className="muted small">AI는 사람과의 일치율로만 자율권을 얻습니다. 승격은 추천만 하고 담당자가 승인하며, 품질이 떨어지면 자동으로 강등됩니다.</p>
-      {rows.map((r) => (
+      <p className="muted small">AI는 사람과의 일치율로만 자율권을 얻습니다. 승격은 추천만 하고 담당자가 승인하며, 품질이 떨어지면 자동으로 강등됩니다. 단계 이름을 눌러 직접 바꿀 수도 있어요(근거 없이 올리면 확인을 한 번 더 물어봐요).</p>
+      {rows.map((r) => {
+        const order = isReply(r.doc_type) ? ["assisted", "auto"] : MODES;
+        return (
         <Card key={r.doc_type}><div className="stack" style={{ gap: 10 }}>
           <div className="row wrap"><b className="grow">{TYPE_KO[r.doc_type] ?? r.doc_type}</b>
-            <span className="seg" role="img" aria-label={`현재 단계 ${modeName(r.doc_type, r.mode)}`}>{(isReply(r.doc_type) ? ["assisted", "auto"] : MODES).map((m) => <span key={m} className={m === r.mode ? "on" : ""}>{modeName(r.doc_type, m)}</span>)}</span></div>
+            <div className="seg" role="group" aria-label={`${TYPE_KO[r.doc_type] ?? r.doc_type} 단계`}>{order.map((m) => <button key={m} type="button" className={m === r.mode ? "on" : ""} aria-pressed={m === r.mode} disabled={busy === r.doc_type} onClick={() => click(r, m)}>{modeName(r.doc_type, m)}</button>)}</div></div>
           {NEED(r.doc_type, r.mode) > 0 && <div><div className="progress" role="progressbar" aria-valuenow={r.samples} aria-valuemax={NEED(r.doc_type, r.mode)}>
             <i style={{ width: `${Math.min(100, (r.samples / NEED(r.doc_type, r.mode)) * 100)}%` }} /></div>
             <p className="small muted" style={{ marginTop: 4 }}>표본 {Math.min(r.samples, NEED(r.doc_type, r.mode))}/{NEED(r.doc_type, r.mode)}건{r.samples >= NEED(r.doc_type, r.mode) ? ` 충족(총 ${r.samples}건)` : ""} · {isReply(r.doc_type) ? "초안 그대로 발송" : "일치"} {r.agree}건 · 신뢰구간 하한 {r.lower_bound}</p></div>}
           {isReply(r.doc_type) && <p className="small muted">미리 작성 단계가 되면 출근할 때 사내 수신자 초안을 먼저 만들어 둬요. 발송은 항상 사람이 눌러요. 외부 수신자는 승격 대상이 아니에요.</p>}
           {r.mode === "auto" && <p className="small muted">자동 단계 · 최근 결과 신뢰구간 하한 {r.lower_bound}{r.applied && " · 자동 강등됨"}</p>}
-          <div className="row"><span className="small muted grow">{r.mode === "auto" && r.reason.startsWith("collecting") ? "최근 결과가 기준 이상이라 자동 단계를 유지해요" : REASON(r.reason)}</span>
-            {r.recommended_mode !== r.mode && <button className="btn primary sm" onClick={() => promote(r)}>{modeName(r.doc_type, r.recommended_mode)}{ro(modeName(r.doc_type, r.recommended_mode))} 승격 승인</button>}</div>
-        </div></Card>))}
+          <div className="row wrap"><span className="small muted grow">{WHY(r)}</span>
+            {r.recommended_mode !== r.mode && <button className="btn primary sm" disabled={busy === r.doc_type} onClick={() => setMode(r, r.recommended_mode, "approve")}>{modeName(r.doc_type, r.recommended_mode)}{ro(modeName(r.doc_type, r.recommended_mode))} 승격 승인</button>}</div>
+          {err?.type === r.doc_type && <p className="small" role="alert" style={{ color: "var(--danger)" }}>{err.text}</p>}
+        </div></Card>);
+      })}
     </div>
   );
 }

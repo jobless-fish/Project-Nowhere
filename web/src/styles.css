@@ -279,3 +279,8 @@ body { font-variant-numeric: tabular-nums; }
 .pl-rev { background: var(--accent); } .pl-cost { background: var(--surface-2); border: 1px solid var(--ctl-border); }
 
 .tickbar { position: relative; overflow: visible; } .tickbar .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); border-radius: 1px; }
+
+/* the stage selector is a real control now: buttons inside the sunken track */
+.seg { display: inline-flex; } .seg button { min-height: 36px; padding: 0 16px; border: 0; background: none; cursor: pointer; font-weight: 700; color: var(--text-2); border-radius: var(--r-pill); }
+.seg button.on { background: var(--accent); color: var(--on-accent); cursor: default; } .seg button:not(.on):hover { background: var(--surface); color: var(--text); }
+.seg button:disabled { opacity: .6; cursor: progress; } .seg button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
