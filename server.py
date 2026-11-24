@@ -15,8 +15,12 @@ from pathlib import Path
 PORT = os.getenv("PORT", "8000")
 # Defaults for a self-contained demo. Every one can be overridden from the environment.
 os.environ.setdefault("SOURCE", "world")
-os.environ.setdefault("WORLD_URL", f"http://127.0.0.1:{PORT}/world")
-os.environ.setdefault("ASSISTANT_URL", f"http://127.0.0.1:{PORT}/api")
+# The internal addresses (assistant -> company systems, attendance webhook) must match the port uvicorn really listens on, whatever
+# --port the user chose. If the user did not set them, they are learnt from the first request (see AutoAddress below).
+_AUTO_ADDR = "WORLD_URL" not in os.environ and "ASSISTANT_URL" not in os.environ
+if _AUTO_ADDR:   # best guess until the first request arrives
+    os.environ["WORLD_URL"] = f"http://127.0.0.1:{PORT}/world"
+    os.environ["ASSISTANT_URL"] = f"http://127.0.0.1:{PORT}/api"
 os.environ.setdefault("LLM_PROVIDER", "mock")      # no key, no cost; set LLM_PROVIDER=openai|claude for a real model
 os.environ.setdefault("DEFAULT_MODE", "auto")
 # Data file: portable default (the OS temp dir; there is no /tmp on Windows). With no DOCFLOW_DB set this is a throw-away DEMO,
@@ -43,8 +47,27 @@ async def lifespan(_):
     yield
 
 
-combined = FastAPI(title="Project Nowhere", lifespan=lifespan, docs_url=None, redoc_url=None)
-combined.mount("/api", assistant_app)
-combined.mount("/world", world_app)
+_app = FastAPI(title="Project Nowhere", lifespan=lifespan, docs_url=None, redoc_url=None)
+_app.mount("/api", assistant_app)
+_app.mount("/world", world_app)
 if DIST.exists():
-    combined.mount("/", StaticFiles(directory=DIST, html=True), name="web")
+    _app.mount("/", StaticFiles(directory=DIST, html=True), name="web")
+
+
+class AutoAddress:
+    """ASGI wrapper: the server socket address of the first request is the real host:port, so internal calls work on any --port."""
+
+    def __init__(self, app):
+        self.app, self.learnt = app, not _AUTO_ADDR
+
+    async def __call__(self, scope, receive, send):
+        if not self.learnt and scope["type"] in ("http", "websocket") and scope.get("server") and scope["server"][1]:
+            host, port = scope["server"]
+            host = "127.0.0.1" if host in ("0.0.0.0", "::", "::1", "localhost") else host
+            os.environ["WORLD_URL"] = f"http://{host}:{port}/world"
+            os.environ["ASSISTANT_URL"] = f"http://{host}:{port}/api"
+            self.learnt = True
+        await self.app(scope, receive, send)
+
+
+combined = AutoAddress(_app)

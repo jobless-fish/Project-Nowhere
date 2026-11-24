@@ -16,7 +16,7 @@
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0f1217; --surface: #181c22; --surface-2: #20252d; --border: #2b313a; --rule: #f2f4f6;
     --text: #f2f4f6; --text-2: #b0b8c1; --text-3: #8b95a1;
     --accent: #4d94ff; --accent-hover: #6aa6ff; --accent-press: #86b6ff; --on-accent: #0b1220; --accent-soft: #13294a; --focus: #8ab8ff;
@@ -26,6 +26,16 @@
     --shadow-mid: 0 2px 4px rgb(0 0 0 / .4), 0 6px 12px rgb(0 0 0 / .4), 0 12px 24px rgb(0 0 0 / .3);
   }
 }
+:root[data-theme="dark"] {
+    --bg: #0f1217; --surface: #181c22; --surface-2: #20252d; --border: #2b313a; --rule: #f2f4f6;
+    --text: #f2f4f6; --text-2: #b0b8c1; --text-3: #8b95a1;
+    --accent: #4d94ff; --accent-hover: #6aa6ff; --accent-press: #86b6ff; --on-accent: #0b1220; --accent-soft: #13294a; --focus: #8ab8ff;
+    --ctl-border: #8b95a1;
+    --danger: #ff8f85; --danger-soft: #3a1613; --warn: #f5c06a; --warn-soft: #33260c; --ok: #5fd69b; --ok-soft: #10301f;
+    --shadow-low: 0 1px 2px rgb(0 0 0 / .5), 0 2px 4px rgb(0 0 0 / .3);
+    --shadow-mid: 0 2px 4px rgb(0 0 0 / .4), 0 6px 12px rgb(0 0 0 / .4), 0 12px 24px rgb(0 0 0 / .3);
+}
+:root { color-scheme: light dark; } :root[data-theme="light"] { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
 button, input, textarea, select { font: inherit; color: inherit; }
@@ -153,3 +163,5 @@ input[type="checkbox"] { width: 20px; min-height: 20px; accent-color: var(--acce
 
 .gsummon { position: absolute; right: 16px; bottom: 16px; width: 48px; padding: 0; border-radius: 50%; font-size: 22px; pointer-events: auto; box-shadow: var(--shadow-mid); }
 @media (max-width: 800px) { .gsummon { bottom: 76px; } }
+
+.theme-toggle { position: fixed; top: 12px; right: 12px; z-index: 35; min-width: 44px; gap: 6px; box-shadow: var(--shadow-low); }

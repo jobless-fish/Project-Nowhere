@@ -218,3 +218,15 @@ def guide_chat(b: ChatIn):
 def guide_tour(user_id: str):
     _user(user_id)
     return {"steps": guide.tour(user_id)}
+
+
+@router.get("/diag")
+def diag():
+    """What a user can look at when something says 'connection problem': can this server reach the company systems?"""
+    out = {"llm": get_client().provider, "source": os.getenv("SOURCE", "fixture"), "world_url": os.getenv("WORLD_URL") if os.getenv("SOURCE") == "world" else None}
+    try:
+        out["employees"] = len(get_source().users())
+        out["ok"], out["error"] = True, None
+    except Exception as e:
+        out["ok"], out["error"] = False, f"{type(e).__name__}: {str(e)[:160]}"
+    return out

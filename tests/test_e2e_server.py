@@ -110,3 +110,49 @@ def test_demo_starts_with_an_empty_portable_database(tmp_path):
     env2 = {**env, "DOCFLOW_DB": str(keep)}
     subprocess.run([sys.executable, "-c", "import server"], cwd=ROOT, env=env2, capture_output=True, text=True)
     assert keep.read_text() == "precious"                                                      # explicit path is never touched
+
+
+def _serve(port_flag, extra_env=None):
+    """Start the server on --port <port_flag> WITHOUT telling it through PORT, the way a user typing the command would."""
+    port = free_port()
+    env = {k: v for k, v in os.environ.items() if k not in ("PORT", "SOURCE", "WORLD_URL", "ASSISTANT_URL", "DOCFLOW_API_KEY", "ANTHROPIC_API_KEY")}
+    env |= {"LLM_PROVIDER": "mock", "DEFAULT_MODE": "auto", "PYTHONPATH": str(ROOT)} | (extra_env or {})
+    p = subprocess.Popen([sys.executable, "-m", "uvicorn", "server:combined", "--port", str(port), "--log-level", "warning"], cwd=ROOT, env=env,
+                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    base = f"http://127.0.0.1:{port}"
+    for _ in range(60):
+        try:
+            if httpx.get(base + "/api/health", timeout=1).status_code == 200:
+                return p, httpx.Client(base_url=base, timeout=20)
+        except httpx.HTTPError:
+            time.sleep(0.25)
+    p.kill()
+    pytest.fail("server did not start")
+
+
+def test_any_port_works_not_only_the_default_one():
+    """Regression: running with --port 8001 used to point the internal calls at :8000 and the UI said 'connection problem'."""
+    p, c = _serve(None)
+    try:
+        h = login(c, "u_kim")
+        assert c.post("/world/hr/clock-in", headers=h).status_code == 200
+        for _ in range(40):
+            r = c.get("/api/assistant/briefing", params={"user_id": "u_kim"})
+            if r.status_code == 200:
+                break
+            time.sleep(0.25)
+        assert r.status_code == 200 and r.json()["todos"], "webhook did not reach the assistant on a non-default port"
+        assert c.post("/api/assistant/clock-in", json={"user_id": "u_dev1"}).status_code == 200      # the direct fallback path works too
+        d = c.get("/api/assistant/diag").json()
+        assert d["ok"] is True and d["employees"] == 217 and str(c.base_url.port) in d["world_url"]
+    finally:
+        p.terminate(); p.wait(timeout=10)
+
+
+def test_diag_tells_the_user_what_is_wrong():
+    p, c = _serve(None, {"WORLD_URL": "http://127.0.0.1:9", "ASSISTANT_URL": "http://127.0.0.1:9"})     # unreachable on purpose, user-supplied
+    try:
+        d = c.get("/api/assistant/diag").json()
+        assert d["ok"] is False and "127.0.0.1:9" in d["world_url"] and d["error"]
+    finally:
+        p.terminate(); p.wait(timeout=10)

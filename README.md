@@ -10,6 +10,14 @@
 글꼴은 Pretendard(SIL OFL 1.1)를 `site/fonts/`에 자체 호스팅합니다(동적 서브셋이라 페이지에 필요한 글자 조각만 내려받음, 라이선스 파일 동봉). 메타 설명·Open Graph·파비콘·`sitemap.xml`·`robots.txt`가 들어 있고, 주소는 기본 Pages 주소(`jobless-fish.github.io/Project-Nowhere`)를 가정했습니다.
 로컬 확인: `python -m http.server -d site 8080`. GitHub Pages 배포: 저장소 Settings → Pages → Source를 **GitHub Actions**로 선택하면 `site/` 변경 시 자동 배포됩니다.
 
+## 별도 창(앱 창)으로 실행
+```bash
+python launch.py        # 서버를 켜고 주소창·탭이 없는 독립 창을 띄워요. 창을 닫으면 서버도 종료돼요.
+```
+이미 설치된 Chrome / Edge / Brave / Chromium을 앱 모드로 사용하므로 추가 설치가 없어요(없으면 기본 브라우저로 열어요). 포트 지정 `--port 9000`, 서버만 `--no-browser`, 브라우저 지정은 환경변수 `NOWHERE_BROWSER`. 화면은 처음 한 번 빌드해야 해요(`cd web && npm install && npx vite build`).
+- 실행기의 서버 시작→창 열림→창 닫힘→서버 종료 흐름은 테스트(`tests/test_launch.py`)와 실제 Chromium으로 확인했어요. 이 환경에는 화면이 없어 **앱 모드 창을 직접 눈으로 보지는 못했어요**(헤드리스 캡처로 페이지 로딩만 확인).
+- 설치형 앱: 서버를 켠 뒤 Chrome/Edge 주소창의 "설치" 아이콘으로 바탕화면 앱으로 설치할 수도 있어요(매니페스트와 아이콘 포함, **미검증**).
+
 ## 한 줄로 실제 서버 실행 (권장)
 ```bash
 cd web && npm install && npx vite build && cd .. && pip install -r requirements.txt

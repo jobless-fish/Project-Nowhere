@@ -11,6 +11,7 @@ import MailPage from "./pages/Mail";
 import News from "./pages/News";
 import Org from "./pages/Org";
 import Guide from "./guide/Guide";
+import ThemeToggle from "./theme";
 
 const NAV = [
   { id: "home", label: "홈", icon: "home" }, { id: "news", label: "소식", icon: "news" },
@@ -29,7 +30,7 @@ export default function App() {
   const route = useRoute();
   const login = (s: Session) => { setSession(s); set(s); location.hash = "#/home"; };
   const logout = () => { setSession(null); set(null); };
-  if (!session) return <Login onLogin={login} />;
+  if (!session) return <><ThemeToggle /><Login onLogin={login} /></>;
 
   const page = { home: <Home s={session} />, news: <News s={session} />, mail: <MailPage s={session} />,
     chat: <Chat s={session} />, org: <Org s={session} />, admin: <Admin />, controls: <Controls /> }[route] ?? <Home s={session} />;
@@ -52,6 +53,7 @@ export default function App() {
           <button className="btn quiet" onClick={logout} aria-label="로그아웃" title="로그아웃" style={{ padding: 0, minWidth: 44 }}><Icon n="out" /></button>
         </div>
       </aside>
+      <ThemeToggle />
       <main className="main">{page}</main>
       <Guide session={session} />
     </div>

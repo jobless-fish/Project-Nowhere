@@ -13,6 +13,7 @@ export default function Home({ s }: { s: Session }) {
   const [fb, setFb] = useState<Record<string, string>>({});
   const [acts, setActs] = useState<Record<string, Action>>({});
   const [drafting, setDrafting] = useState("");
+  const [why, setWhy] = useState("");
   const uid = s.user.id;
 
   const load = useCallback(async () => {
@@ -35,7 +36,12 @@ export default function Home({ s }: { s: Session }) {
       for (let i = 0; i < 8; i++) { await sleep(600); try { await api.get<Briefing>(`/assistant/briefing?user_id=${uid}`); await load(); return; } catch { /* not ready */ } }
       await api.post("/assistant/clock-in", { user_id: uid });
       await load();   // reload briefing, feedback AND any pre-drafted replies
-    } catch { setState("error"); }
+    } catch {
+      setState("error");
+      api.get<{ ok: boolean; error: string | null }>("/assistant/diag")
+        .then((d) => setWhy(d.ok ? "서버는 정상이에요. 잠시 뒤에 다시 눌러 보세요." : `서버가 사내 시스템에 연결하지 못했어요. (${d.error})`))
+        .catch(() => setWhy("서버에 닿지 않아요. 서버가 켜져 있는지, 주소의 포트가 맞는지 확인해 주세요."));
+    }
   };
   const propose = async (t: Todo) => {
     setDrafting(t.key);
@@ -58,7 +64,7 @@ export default function Home({ s }: { s: Session }) {
         <p>출근을 기록하면 비서가 밤새 도착한 메일과 이슈를 읽고, 오늘 할 일을 정리해 드려요.</p>
         <button className="btn primary" data-guide="clock-in" onClick={clockIn} disabled={state === "working"} aria-busy={state === "working" || undefined}>
           <Icon n="clock" />출근하기</button>
-        {state === "error" && <p role="alert" style={{ color: "#ffb4a8" }}>연결에 문제가 있습니다. 잠시 후 다시 시도해 주세요.</p>}
+        {state === "error" && <p role="alert" style={{ color: "var(--danger)", fontWeight: 600 }}>연결에 문제가 있어요. {why || "원인을 확인하는 중…"} 다시 시도하려면 위 버튼을 눌러 주세요.</p>}
       </div>
     </>
   );
