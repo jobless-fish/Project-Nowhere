@@ -11,6 +11,7 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
+from . import acl
 from .auth import current_user, sign
 from . import npc
 from .store import COMPANY, PASSWORD, store
@@ -308,6 +309,101 @@ def ack_notice(nid: str, me=Depends(current_user)):
 @portal.get("/posts")
 def posts(hours: int = 72, me=Depends(current_user)):
     return {"items": [p for p in store.posts if store.audience_ok(me, p["audience"]) and p["ts"] >= _since(hours)]}
+
+
+# ---- Groupware: document box + search under access control (rules and reasons in acl.py) ----
+groupware = APIRouter(prefix="/groupware")
+KINDS = ("doc", "notice", "post", "wiki")
+
+
+def _corpus() -> list[dict]:
+    from .company import WIKI
+    out = list(store.docs)
+    out += [dict(id=f"ntc-{n['id']}", kind="notice", owner=None, title=n["title"], body=n["body"], audience=[n["audience"]], deny=[], tags=[], ts=n["ts"]) for n in store.notices]
+    out += [dict(id=f"post-{p['id']}", kind="post", owner=None, title=p["title"], body=p["body"], audience=[p["audience"]], deny=[], tags=[], ts=p["ts"]) for p in store.posts]
+    out += [dict(id=f"wiki-{w['slug']}", kind="wiki", owner=None, title=w["title"], body=w["body"], audience=["all"], deny=[], tags=w.get("tags", []), ts=w["updated"]) for w in WIKI]
+    return out
+
+
+def _terms(q: str) -> list[str]:
+    return [t for t in q.lower().split() if t][:6]
+
+
+def _match(doc: dict, terms: list[str]) -> int:
+    """0 = no match (every term must appear); otherwise a score: title and tag hits count more than body hits."""
+    title, body, tags = doc["title"].lower(), doc["body"].lower(), " ".join(doc.get("tags", [])).lower()
+    score = 0
+    for t in terms:
+        sc = 3 * (t in title) + 2 * (t in tags) + (t in body)
+        if not sc:
+            return 0
+        score += sc
+    return score
+
+
+def _snippet(doc: dict, terms: list[str]) -> str:
+    body = doc["body"]
+    i = min((j for j in (body.lower().find(t) for t in terms) if j >= 0), default=0)
+    a = max(0, i - 30)
+    return ("…" if a else "") + body[a:a + 120] + ("…" if a + 120 < len(body) else "")
+
+
+@groupware.get("/search")
+def gw_search(q: str, kind: str = "", limit: int = 20, offset: int = 0, me=Depends(current_user)):
+    terms = _terms(q)
+    if not terms or len(q) > 100:
+        raise HTTPException(422, "query must be 1-100 characters")
+    corpus = [d for d in _corpus() if not kind or d["kind"] == kind]
+    allowed = acl.visible(me, corpus)                         # permission FIRST: nothing below can see a document the person may not open
+    scored = [(_match(d, terms), d) for d in allowed]
+    hits = [d for sc, d in sorted(((sc, d) for sc, d in scored if sc), key=lambda x: (-x[0], x[1]["ts"]), reverse=False)]
+    hits.sort(key=lambda d: d["ts"], reverse=True)               # newest first within the same score (sort is stable)
+    hits.sort(key=lambda d: -_match(d, terms))
+    page = hits[offset: offset + min(limit, 50)]
+    # For the audit log only (never in the response): did the person look for something a wall or a deny hides from them?
+    shown = {d["id"] for d in allowed}
+    hidden = [d for d in corpus if d["id"] not in shown and _match(d, terms) and (d.get("owner") and acl.blocked_pair(me["dept_key"], d["owner"]) or acl.decide(me, d)[1] == "explicit deny")]
+    if hidden:
+        acl.log(me, "search_blocked_match", None, "query matched documents behind a barrier or deny", query=q[:60], count=len(hidden))
+    for d in hits:                                            # a wall crossed by the oversight exemption is also recorded
+        if acl.decide(me, d)[1].startswith("barrier exempt"):
+            acl.log(me, "barrier_exempt_view", d["id"], "oversight exemption in search")
+    return {"items": [{"id": d["id"], "kind": d["kind"], "title": d["title"], "snippet": _snippet(d, terms), "owner": d.get("owner"), "ts": d["ts"]} for d in page],
+            "next_offset": offset + len(page) if offset + len(page) < len(hits) else None}          # no total: a count would leak
+
+
+@groupware.get("/docs/{doc_id}")
+def gw_doc(doc_id: str, me=Depends(current_user)):
+    d = next((d for d in _corpus() if d["id"] == doc_id), None)
+    if d is None:
+        raise HTTPException(404, "not found")
+    ok, why = acl.decide(me, d)
+    if not ok:
+        acl.log(me, "open_denied", doc_id, why)
+        raise HTTPException(404, "not found")                  # same answer as for a document that does not exist
+    if why.startswith("barrier exempt"):
+        acl.log(me, "barrier_exempt_view", doc_id, why)
+    return {k: d[k] for k in ("id", "kind", "owner", "title", "body", "tags", "ts")}
+
+
+def _oversight(me=Depends(current_user)):
+    if not acl.exempt(me):
+        raise HTTPException(403, "oversight only")
+    return me
+
+
+@groupware.get("/acl/explain")
+def gw_explain(user_id: str, doc_id: str, me=Depends(_oversight)):
+    u, d = store.users.get(user_id), next((d for d in _corpus() if d["id"] == doc_id), None)
+    if not u or not d:
+        raise HTTPException(404, "not found")
+    ok, why = acl.decide(u, d)
+    return {"user_id": user_id, "doc_id": doc_id, "allowed": ok, "reason": why}
+
+
+@groupware.get("/acl/audit")
+def gw_audit(me=Depends(_oversight)):
+    return {"items": list(reversed(acl.AUDIT))[:200], "barriers": [list(b) for b in acl.BARRIERS]}
 
 
 # ---- HR / attendance: clocking in notifies the assistant by signed webhook ----

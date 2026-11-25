@@ -122,6 +122,9 @@ class Store:
             i.setdefault("log", [])
         self.now = lambda: simclock.now().timestamp()     # injectable clock (tests set delays to zero); follows the simulation clock
         self.pending, self.generating, self.acks, self.seq = [], 0, set(), 0
+        from . import acl, groupware
+        acl.reset()
+        self.docs = groupware.build(self.users, self.t0)       # groupware document box (ACL in acl.py)
         self.sim = None                                # set by world/simweek.py when a simulated week is started
         self.mail_seen, self.chat_seen = {}, {}      # per user: the moment everything older counts as read
 
