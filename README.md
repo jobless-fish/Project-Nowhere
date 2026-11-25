@@ -287,3 +287,13 @@ SOURCE=gmail python -m uvicorn server:combined --port 8888   # 로그인 사용�
 ```
 
 실제 Gmail 호출은 이 환경에서 검증하지 못했습니다. 코드는 가짜 Gmail API(테스트)로만 확인했고, 첫 실행은 본인 PC에서 해야 합니다.
+
+## 브라우저에서 바로 써보기 (GitHub Pages)
+
+`site/demo/`는 서버 없이 **브라우저 탭 안에서** 제품 전체(회사 시스템 + 비서 + 챗봇 노워)를 돌립니다. 서버와 같은 `app/`·`world/` 코드를 Pyodide(WebAssembly 파이썬)로 실행하고, 화면의 `fetch`를 Web Worker 안의 앱으로 연결합니다(`browser/`, `web/src/static-demo.ts`).
+
+- 규칙 기반 엔진으로 동작합니다(키·비용 없음, 입력한 내용은 탭 밖으로 나가지 않음). 데이터는 탭 메모리에만 있어 새로고침하면 처음으로 돌아갑니다.
+- 처음 열 때 파이썬 런타임(약 10MB)을 공식 CDN(jsdelivr, 버전 고정)에서 내려받아 몇 초~수십 초 걸립니다.
+- 빌드: `python scripts/build_pages_demo.py` → `site/demo/`(커밋하지 않음). Pages 워크플로가 자동으로 빌드합니다.
+- 실제 모델·Gmail 연결은 이 데모에 없습니다(서버 실행에서만).
+- 검증: 헤드리스 브라우저에서 로그인→출근→브리핑→답장 초안·발송→메일 전송과 동료 답장→챗봇→문서 처리→회사 화면까지 통과했습니다(런타임은 로컬 사본 사용; 실제 CDN 로딩과 배포된 Pages 주소에서의 동작은 아직 확인 못 함).
