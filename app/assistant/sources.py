@@ -62,10 +62,14 @@ class FixtureSource:
 
 
 def get_source():
-    """SOURCE=fixture (default, offline demo) | world (Nowhere systems at WORLD_URL)."""
+    """SOURCE=fixture (default, offline demo) | world (Nowhere systems at WORLD_URL) | gmail (own inbox, read-only)."""
     import os
     if os.getenv("SOURCE", "fixture") == "world":
         import httpx
         from .world_source import WorldSource
         return WorldSource(httpx.Client(base_url=os.getenv("WORLD_URL", "http://localhost:9000"), timeout=15))
+    if os.getenv("SOURCE") == "gmail":     # your own inbox, read-only (see gmail_source.py)
+        import httpx
+        from .gmail_source import GmailSource
+        return GmailSource(httpx.Client(timeout=20))
     return FixtureSource()

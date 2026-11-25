@@ -269,3 +269,21 @@ LLM_PROVIDER=openai LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=qwen2.5:7b 
 - Pretendard 글꼴 — **SIL OFL 1.1** (`site/fonts/`, 라이선스 파일 동봉)
 - 다이어그램의 글꼴(Geist, Instrument Serif, Noto)은 Google Fonts에서 불러오며 각각 OFL이에요.
 - 모든 회사·인물·고객·수치는 **가상**이에요. 실제와 같은 이름이 있다면 우연이에요.
+
+## 내 Gmail 연결 (읽기 전용)
+
+`SOURCE=gmail`로 실행하면 가짜 회사 대신 **내 받은편지함**(최근 3일, 프로모션·소셜 제외)이 비서의 입력이 됩니다.
+
+- 권한은 `gmail.readonly`뿐입니다. 보내기·삭제·라벨 변경 코드가 없고(테스트로 확인), 그래서 "답장 초안 → 발송" 흐름은 이 모드에서 동작하지 않습니다.
+- 모든 메일은 외부·비신뢰 텍스트로 취급하고, 프롬프트 주입 방어(`guard.py`)도 그대로 적용됩니다.
+- **메일 내용이 브리핑을 만들기 위해 설정한 LLM 공급자에게 전송됩니다.** 본인 메일에만 쓰세요. 다른 사람의 메일함에 쓰면 안 됩니다.
+- 키는 환경변수로만 둡니다(파일 저장 금지).
+
+```bash
+# 1) 본인의 Google Cloud 프로젝트에서 Gmail API를 켜고 OAuth "데스크톱 앱" 클라이언트를 만든 뒤
+python scripts/gmail_auth.py        # 브라우저 승인 → GMAIL_REFRESH_TOKEN 출력
+# 2) 환경변수 GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN 설정 후
+SOURCE=gmail python -m uvicorn server:combined --port 8888   # 로그인 사용자 id는 "me"
+```
+
+실제 Gmail 호출은 이 환경에서 검증하지 못했습니다. 코드는 가짜 Gmail API(테스트)로만 확인했고, 첫 실행은 본인 PC에서 해야 합니다.
