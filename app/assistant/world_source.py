@@ -47,11 +47,29 @@ class WorldSource:
     def _hours(ts: str) -> float:
         return round((simclock.now() - datetime.fromisoformat(ts)).total_seconds() / 3600, 1)
 
+    @staticmethod
+    def _answered(m: dict, sent: list[dict], inbox: list[dict]) -> bool:
+        """Did the user already answer this mail (by hand, in the mail screen)? A later mail to the sender in the same thread / with the same subject counts.
+        Found by the one-week simulation: a request answered directly came back as a todo on the next refresh."""
+        who = m["from"]["id"] or m["from"]["email"]
+        key = lambda x: (x["subject"] or "").strip().lower().removeprefix("re:").strip()
+        for r in sent:
+            if r["ts"] <= m["ts"] or not (who in (r.get("to") or []) or who in (r.get("to_external") or [])):
+                continue
+            if m.get("thread") and r.get("thread") == m["thread"]:
+                return True
+            # same subject: the reply answers the NEWEST such mail before it, not every earlier one (several requests may share a subject)
+            if key(r) == key(m) and not any(o["ts"] > m["ts"] and o["ts"] <= r["ts"] and (o["from"]["id"] or o["from"]["email"]) == who and key(o) == key(m) for o in inbox):
+                return True
+        return False
+
     def fetch(self, user: User, hours: int = 24) -> list[Item]:
         mine, items = [user.id], []
-        for m in self._paged(user, "/mail/inbox", hours):
+        inbox = self._paged(user, "/mail/inbox", hours)
+        sent = self._paged(user, "/mail/sent", max(hours, 72)) if inbox else []
+        for m in inbox:
             items.append(Item(f"mail-{m['id']}", "mail", m["subject"], m["body"], m["from"]["name"],
-                              self._hours(m["ts"]), mine, external=m["external"],
+                              self._hours(m["ts"]), mine, external=m["external"], done=self._answered(m, sent, inbox),
                               reply_to=(f"user:{m['from']['id']}" if m["from"]["id"] else f"ext:{m['from']['email']}")))
         for i in self._get(user, "/tracker/issues", hours=max(hours, 48))["items"]:
             items.append(Item(f"iss-{i['id']}", "issue", i["title"], i["body"], i["key"], self._hours(i["ts"]),

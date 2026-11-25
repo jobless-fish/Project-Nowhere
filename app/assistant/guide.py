@@ -82,11 +82,13 @@ def _wiki_hit(msg: str):
     words = [w for w in re.findall(r"[가-힣A-Za-z0-9]{2,}", m) if w not in ("규정", "알려줘", "알려", "얼마", "어떻게", "있어", "뭐야", "어디")]
     best, best_score = None, 0
     for d in company.WIKI:
-        for line in d["body"].split("\n"):
-            score = sum(1 for w in words if w in line.lower()) + (1 if any(w in d["title"] for w in words) else 0)
-            if score > best_score:
-                best, best_score = {"title": d["title"], "line": line.strip()[:160]}, score
-    return best if best_score >= 1 else None
+        title_hit = 1 if any(w in d["title"] for w in words) else 0
+        scored = [(sum(1 for w in words if w in line.lower()), line.strip()) for line in d["body"].split("\n") if line.strip()]
+        top = max((sc for sc, _ in scored), default=0) + title_hit
+        if top > best_score:
+            hits = ([ln for sc, ln in scored if sc >= 1] or ([ln for _, ln in scored][:3] if title_hit else []))[:3]          # the related lines of the rule, not just one (found by the week simulation: a one-line answer felt thin)
+            best, best_score = {"title": d["title"], "line": (hits[0] if hits else "")[:160], "lines": [h[:160] for h in hits]}, top
+    return best if best_score >= 1 and best and best["lines"] else None
 
 
 def rules(msg: str, route: str, visible: set, ctx: dict) -> tuple[str, list]:
@@ -100,7 +102,7 @@ def rules(msg: str, route: str, visible: set, ctx: dict) -> tuple[str, list]:
 
     wk = _wiki_hit(msg)
     if wk:
-        return (f"'{wk['title']}'에 이렇게 적혀 있어요. {wk['line']} 전체 내용은 회사 화면의 위키에서 볼 수 있어요.", to("company", "company-tabs", "위키 탭에서 규정 전문을 볼 수 있어요."))
+        return (f"'{wk['title']}'에 이렇게 적혀 있어요. {' '.join(wk['lines'])} 전체 내용은 회사 화면의 위키에서 볼 수 있어요.", to("company", "company-tabs", "위키 탭에서 규정 전문을 볼 수 있어요."))
     if has("안녕", "도움", "뭐 할 수", "무엇을 할 수", "기능", "누구"):
         return ("저는 노워예요. 화면 위를 돌아다니면서 어디를 보면 되는지 짚어 드려요. 오늘 할 일, 답장 초안, 조직도, 관리자 화면 같은 걸 물어보세요. 직접 보내거나 승인하지는 못하고, 위치만 알려드려요.", [])
     if has("보안", "의심", "피싱", "인젝션", "격리"):

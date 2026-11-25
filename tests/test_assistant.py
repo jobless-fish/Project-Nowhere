@@ -150,3 +150,10 @@ def test_the_hide_guard_and_the_todo_rule_agree_on_what_a_deadline_notice_is(cli
     for title, body in (("월말 결산 일정 안내", "11/27(금) 17시까지 제출해 주세요"), ("정보보안 교육 필수 이수 안내", "")):
         assert mute.guard_reason("notice", title, body)                 # cannot be hidden ...
     assert mute.guard_reason("notice", "사옥 주차 이용 안내", "등록 차량만 이용할 수 있어요") is None
+
+
+def test_wiki_answer_gives_the_related_rule_lines_not_a_single_sentence():
+    from app.assistant import guide
+    h = guide._wiki_hit("택시비 한도 얼마야")
+    assert h["title"] == "경비 정산 규정" and len(h["lines"]) >= 2 and any("3만원" in x for x in h["lines"])
+    assert len(guide._wiki_hit("휴가 규정 알려줘")["lines"]) >= 2

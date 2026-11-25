@@ -166,3 +166,23 @@ def test_failed_document_explains_why_and_can_be_retried(client, monkeypatch):
     assert client.post(f"/documents/{did}/retry").json()["status"] != "failed"
     assert client.post(f"/documents/{did}/retry").status_code == 409            # only failed documents are retried
     assert client.post("/documents/999999/retry").status_code == 404
+
+
+def test_a_mail_answered_by_hand_does_not_come_back_as_a_todo(env):
+    c, world, tok = env
+    b = brief(c, "u_dev1")
+    t = next(t for t in b["todos"] if any(s.startswith("mail-") for s in t["source_ids"]))
+    mid = next(s for s in t["source_ids"] if s.startswith("mail-"))
+    src = arouter.get_source()
+    from app.assistant.sources import User
+    u = User("u_dev1", "이서연", "employee", "개발")
+    item = next(i for i in src.fetch(u, 72) if i.id == mid)
+    assert not item.done
+    to = item.reply_to.split(":", 1)[1]
+    r = world.post("/mail/send", json={"to": [to], "subject": "Re: " + item.title, "body": "확인했습니다, 오늘 중 드릴게요."}, headers=tok("u_dev1"))
+    assert r.status_code == 201, r.text
+    assert next(i for i in src.fetch(u, 72) if i.id == mid).done                       # answered by hand: finished
+    unrelated = next(i for i in src.fetch(u, 72) if i.source == "mail" and i.id != mid)
+    assert not unrelated.done                                                          # other mails are untouched
+    b2 = c.post("/assistant/briefing/refresh", json={"user_id": "u_dev1"}).json()["briefing"]
+    assert not any(mid in t["source_ids"] for t in b2["todos"])
