@@ -12,6 +12,7 @@ A "kind of item" is its signature: source + title with numbers, Re:/Fwd:, dates 
 import re
 
 from .. import db
+from .obligations import is_obligation
 
 SIGNAL_PREFIXES = ("[갱신]", "[예산]", "[실적]", "[재무]")
 _NOISE = re.compile(r"^(re|fwd?|회신|답장)\s*:\s*|\d+|[^\w가-힣]+", re.I)
@@ -30,7 +31,7 @@ def guard_reason(source: str, title: str, body: str = "", severity: str | None =
     text = f"{title} {body}"
     if source == "notice" and title.startswith(SIGNAL_PREFIXES):
         return "회사의 숫자(계약 갱신·예산·실적·재무)에서 나온 알림이라 숨길 수 없어요. 처리했다면 '확인했어요'를 눌러 주세요."
-    if source == "notice" and ("필수" in text or "마감" in text or "까지" in text and "이수" in text):
+    if is_obligation(source, title, body):
         return "마감이 있는 필수 공지라 숨길 수 없어요. 이미 마쳤다면 '확인했어요'를 눌러 기록을 남겨 주세요."
     if source == "issue" and severity in ("P1", "P2") and mine:
         return "내가 맡은 P1·P2 이슈라 숨길 수 없어요. 처리하거나 '해결'로 바꿔 주세요."

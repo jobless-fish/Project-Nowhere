@@ -5,6 +5,7 @@
   notice  -> acknowledged (recorded in the portal; it no longer comes back as a todo)
 Finished work stays visible with its outcome instead of vanishing.
 """
+import json
 from datetime import datetime
 
 import simclock
@@ -16,8 +17,18 @@ def today() -> str:
     return simclock.now().strftime("%Y-%m-%d")
 
 
+_PREFIX = {"mail": "mail", "iss": "issue", "ntc": "notice"}
+
+
 def kind_of(todo: dict) -> str:
-    return {"mail": "mail", "iss": "issue", "ntc": "notice"}.get(todo["source_ids"][0].split("-")[0], "other")
+    """What kind of work a todo is. A card can cite several sources (the model may fold the mail that reports a P1 and the P1 itself into one card);
+    the issue wins, because it is the thing that must be started and resolved. (Found by the one-week simulation: the card was classified by its
+    FIRST source, came out as "mail", and the start/resolve controls were missing.)"""
+    kinds = {_PREFIX.get(sid.split("-")[0], "other") for sid in todo["source_ids"]}
+    for k in ("issue", "mail", "notice"):
+        if k in kinds:
+            return k
+    return "other"
 
 
 def flows(user_id: str, day: str | None = None) -> dict:
@@ -47,7 +58,10 @@ def attach(user_id: str, brief: dict) -> dict:
 
 
 def raw_id(todo: dict) -> str:
-    return todo["source_ids"][0].split("-", 1)[1]
+    """The id (without prefix) of the source the todo's kind refers to: the issue of an issue card, not whichever source happens to be listed first."""
+    want = kind_of(todo)
+    sid = next((x for x in todo["source_ids"] if _PREFIX.get(x.split("-")[0]) == want), todo["source_ids"][0])
+    return sid.split("-", 1)[1]
 
 
 def start(user, todo: dict, source):
@@ -80,6 +94,16 @@ def complete(user, todo: dict, source, note: str, how: str):
         raise ValueError("unsupported todo")
 
 
+def _kind_of_key(user_id: str, key: str) -> str:
+    with db.conn() as c:
+        row = c.execute("SELECT payload FROM briefings WHERE user_id=? AND day=?", (user_id, today())).fetchone()
+    t = next((t for t in (json.loads(row[0])["todos"] if row else []) if t["key"] == key), None)
+    return kind_of(t) if t else "mail"
+
+
 def reply_sent(user, todo_key: str, to_name: str, mail_ref: str):
-    """Called when a drafted reply was actually sent: the request has been answered."""
+    """Called when a drafted reply was actually sent: a MAIL todo is answered. A card that also carries an issue is NOT finished by the reply
+    (the issue still has to be started and resolved), so it stays open."""
+    if _kind_of_key(user.id, todo_key) != "mail":
+        return
     put(user.id, todo_key, "done", f"회신 발송 → {to_name}", f"mail:{mail_ref}")

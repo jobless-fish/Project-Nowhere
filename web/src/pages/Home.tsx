@@ -127,9 +127,14 @@ export default function Home({ s }: { s: Session }) {
       </div>);
     if (openNote?.key === t.key) return openNote.how === "no_reply" ? noteBox("no_reply", "회신하지 않는 이유", "예) 참고용 안내라 회신이 필요 없어요") : noteBox("done", "무엇을 했나요? (이슈에 기록돼요)", "예) 원인 수정 후 배포 완료");
     const go = (how: "done" | "no_reply") => { setNote(""); setOpenNote({ key: t.key, how }); };
-    if (k === "issue") return t.flow?.status === "in_progress"
-      ? <div className="row wrap"><Badge kind="accent">진행 중</Badge><button className="btn primary sm" disabled={busy} onClick={() => go("done")}>해결 처리…</button></div>
-      : <div><button className="btn sm" disabled={busy} onClick={() => act(t, "start")}>작업 시작</button></div>;
+    if (k === "issue") {
+      const issueControls = t.flow?.status === "in_progress"
+        ? <div className="row wrap"><Badge kind="accent">진행 중</Badge><button className="btn primary sm" disabled={busy} onClick={() => go("done")}>해결 처리…</button></div>
+        : <div><button className="btn sm" disabled={busy} onClick={() => act(t, "start")}>작업 시작</button></div>;
+      // a card that also cites the mail reporting the issue keeps its reply panel: the reply answers the mail, the controls above move the issue
+      const hasMail = t.source_ids.some((id) => b.sources[id]?.source === "mail");
+      return hasMail ? <div className="stack" style={{ gap: 8 }}>{issueControls}<Reply uid={uid} action={acts[t.key]} busy={drafting === t.key} onPropose={() => propose(t)} onChanged={load} /></div> : issueControls;
+    }
     if (k === "notice") return <div><button className="btn primary sm" disabled={busy} onClick={() => act(t, "complete", {})}>확인했어요</button></div>;
     if (k === "mail") return <div className="stack" style={{ gap: 8 }}>
       <Reply uid={uid} action={acts[t.key]} busy={drafting === t.key} onPropose={() => propose(t)} onChanged={load} />

@@ -194,6 +194,7 @@ def feedback_list(user_id: str):
 class Propose(BaseModel):
     user_id: str
     todo_key: str
+    regenerate: bool = False       # replace a template stand-in (model was down) with the AI draft
 
 
 class Decision(BaseModel):
@@ -212,7 +213,7 @@ def propose_action(b: Propose):
     if not row:
         raise HTTPException(404, "not clocked in yet")
     try:
-        return actions.propose(user, json.loads(row[0]), b.todo_key, get_source(), get_client())
+        return actions.propose(user, json.loads(row[0]), b.todo_key, get_source(), get_client(), regenerate=b.regenerate)
     except LookupError as e:
         raise HTTPException(404, str(e))
     except ValueError as e:

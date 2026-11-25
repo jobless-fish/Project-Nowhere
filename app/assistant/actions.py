@@ -26,19 +26,41 @@ def _now():
     return simclock.now().isoformat(timespec="seconds")
 
 
+FALLBACK = "[기본 서식] "      # note prefix of a draft written from a template because the model was unavailable
+
+
+def template_draft(user, item, todo) -> tuple[str, str]:
+    name = item.sender
+    subject = item.title if item.title.lower().startswith("re:") else f"Re: {item.title}"
+    when = f"{todo['due'].removesuffix('까지')}까지 " if todo.get("due") else ""
+    topic = re.sub(r"^\[[^\]]+\]\s*", "", item.title)  # drop tags like [긴급]
+    return subject, (f"{name}님, 안녕하세요.\n'{topic}' 건 확인했습니다. {when}회신드리겠습니다.\n\n{user.name} 드림")
+
+
+def draft_or_template(user, item, todo, client) -> tuple[str, str, dict | None]:
+    """The model's draft, or - when the model is unavailable (rate limit, key, timeout) - a plain template and the reason. Found by the one-week
+    simulation: a provider outage used to surface as a bare HTTP 500 and the person could not continue. The template is only a starting point:
+    it is marked, a human still reads and sends it, and it never counts as evidence that the assistant is good (see decision())."""
+    try:
+        sub, body = draft(user, item, todo, client)
+        return sub, body, None
+    except Exception as ex:  # noqa: BLE001
+        from ..llm.explain import explain_llm_failure
+        sub, body = template_draft(user, item, todo)
+        return sub, body, explain_llm_failure(f"{type(ex).__name__}: {ex}")
+
+
 def draft(user, item, todo, client) -> tuple[str, str]:
     name = item.sender
     subject = item.title if item.title.lower().startswith("re:") else f"Re: {item.title}"
     if client.provider == "mock":
-        when = f"{todo['due'].removesuffix('까지')}까지 " if todo.get("due") else ""
-        topic = re.sub(r"^\[[^\]]+\]\s*", "", item.title)  # drop tags like [긴급]
-        return subject, (f"{name}님, 안녕하세요.\n'{topic}' 건 확인했습니다. {when}회신드리겠습니다.\n\n{user.name} 드림")
+        return template_draft(user, item, todo)
     out = _llm_json(client, SYSTEM, f"user: {user.name}\ndeadline: {todo.get('due')}\n"
                     f"<mail from=\"{name}\" subject=\"{item.title}\">{item.body[:800]}</mail>")
     return str(out.get("subject") or subject)[:200], str(out.get("body", ""))[:3000]
 
 
-def propose(user, briefing: dict, todo_key: str, source, client, internal_only: bool = False) -> dict:
+def propose(user, briefing: dict, todo_key: str, source, client, internal_only: bool = False, regenerate: bool = False) -> dict:
     todo = next((t for t in briefing["todos"] if t["key"] == todo_key), None)
     if not todo:
         raise LookupError("todo not found")
@@ -47,7 +69,12 @@ def propose(user, briefing: dict, todo_key: str, source, client, internal_only: 
         ex = c.execute("SELECT id FROM actions WHERE user_id=? AND day=? AND todo_key=? AND status IN ('proposed','blocked','sent')",
                        (user.id, day, todo_key)).fetchone()
     if ex:
-        return get(ex["id"])
+        cur = get(ex["id"])
+        if regenerate and cur["status"] == "proposed" and (cur.get("note") or "").startswith(FALLBACK):
+            with db.conn() as c:                 # the person asked for the AI version after a template stand-in: replace it (never a draft that was edited/sent)
+                c.execute("DELETE FROM actions WHERE id=? AND status='proposed'", (cur["id"],))
+        else:
+            return cur
     if not hasattr(source, "send_mail"):
         raise ValueError("this source cannot send mail")
     items = {i.id: i for i in source.fetch(user, hours=72)}
@@ -59,9 +86,11 @@ def propose(user, briefing: dict, todo_key: str, source, client, internal_only: 
         raise ValueError("flagged message: no draft is created")
     if internal_only and item.reply_to.startswith("ext:"):
         raise ValueError("pre-drafting is limited to internal recipients")
-    subject, body = draft(user, item, todo, client)
+    subject, body, failure = draft_or_template(user, item, todo, client)
     external = item.reply_to.startswith("ext:")
     status, note = "proposed", None
+    if failure:
+        note = f"{FALLBACK}AI 연결 문제로 기본 서식으로 만들었어요. {failure['why']} 내용을 꼭 고쳐 쓰고, 연결이 돌아오면 'AI로 다시 만들기'를 눌러 보세요."
     if external and RISKY.search(subject + body):
         status, note = "blocked", "초안에 금액·계좌 등 민감 표현이 있어 외부 발송 초안을 막았습니다. 직접 작성해 주세요."
     with db.conn() as c:
@@ -95,7 +124,8 @@ def decide(user, aid: int, approve: bool, subject: str | None, body: str | None,
             n = c.execute("UPDATE actions SET status='rejected', decided_at=? WHERE id=? AND status='proposed'", (_now(), aid)).rowcount
         if not n:
             raise ValueError(f"action is {a['status']}")
-        _record(a, agree=False)
+        if not (a.get("note") or "").startswith(FALLBACK):
+            _record(a, agree=False)
         return get(aid)
     if a["status"] != "proposed":
         raise ValueError(f"action is {a['status']}")
@@ -117,8 +147,8 @@ def decide(user, aid: int, approve: bool, subject: str | None, body: str | None,
         status, note = "failed", f"{type(ex).__name__}: {ex}"[:200]
     with db.conn() as c:
         c.execute("UPDATE actions SET status=?, note=?, decided_at=? WHERE id=?", (status, note, _now(), aid))
-    if status == "sent":  # trust signal: sent exactly as drafted = the assistant got it right
-        _record(a, agree=not edited)
+    if status == "sent" and not (a.get("note") or "").startswith(FALLBACK):  # trust signal: sent exactly as drafted = the assistant got it right
+        _record(a, agree=not edited)               # (a template stand-in says nothing about the model, so it is never counted)
         from . import flow
         flow.reply_sent(user, a["todo_key"], a["to_name"], mid)
     return get(aid)

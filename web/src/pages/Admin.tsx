@@ -168,6 +168,7 @@ function Docs() {
   useEffect(() => { load(); }, [load]);
   const submit = async () => { if (!text.trim()) return; setBusy(true); await api.post("/documents", { text, source: "console" }).catch(() => {}); setText(""); setBusy(false); load(); };
   const review = async (id: number, approve: boolean) => { await api.post(`/documents/${id}/review`, { approve, reviewer: "console" }).catch(() => {}); load(); };
+  const retry = async (id: number) => { await api.post(`/documents/${id}/retry`, {}).catch(() => {}); load(); };
   const KIND: Record<string, string> = { processed: "ok", approved: "ok", needs_review: "warn", failed: "urgent", rejected: "urgent" };
   return (
     <div className="stack">
@@ -180,6 +181,8 @@ function Docs() {
             <b>{TYPE_KO[d.extraction?.doc_type ?? "other"]}</b>{d.extraction && <span className="small muted">신뢰도 {d.extraction.confidence}</span>}
             {d.erp_ref && <span className="chip">{d.erp_ref}</span>}</div>
           <p className="small muted">{d.text.slice(0, 140)}</p>
+          {d.status === "failed" && <div className="row wrap"><span className="small" role="alert">{d.failure?.why ?? "처리하지 못했어요."}</span>
+            <button className="btn sm" onClick={() => retry(d.id)}>다시 시도</button></div>}
           {d.status === "needs_review" && <div className="row"><button className="btn primary sm" onClick={() => review(d.id, true)}>승인</button>
             <button className="btn sm" onClick={() => review(d.id, false)}>반려</button><span className="small muted">{d.audit.at(-1)?.reason}</span></div>}
         </div></Card>))}

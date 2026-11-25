@@ -73,12 +73,31 @@ def process(text: str, source: str = "api", client=None) -> int:
         doc_id = c.execute("INSERT INTO documents(source,text,status) VALUES(?,?, 'new')",
                            (source, text)).lastrowid
         db.add_audit(c, doc_id, "received", source=source)
+    return _run(doc_id, text, client)
+
+
+def retry(doc_id: int, client=None) -> int:
+    """Run extraction again for a document that failed because the model was unavailable (rate limit, timeout, ...). Only 'failed' documents."""
+    with db.conn() as c:
+        row = c.execute("SELECT status, text FROM documents WHERE id=?", (doc_id,)).fetchone()
+        if not row:
+            raise LookupError("document not found")
+        if row["status"] != "failed":
+            raise ValueError(f"document is {row['status']}, only failed documents can be retried")
+        c.execute("UPDATE documents SET status='new' WHERE id=?", (doc_id,))
+        db.add_audit(c, doc_id, "retry_requested")
+    return _run(doc_id, row["text"], client)
+
+
+def _run(doc_id: int, text: str, client=None) -> int:
     try:
         e = extract(text, doc_id, client)
     except Exception as ex:
+        from .llm.explain import explain_llm_failure
+        why = explain_llm_failure(str(ex))
         with db.conn() as c:
             c.execute("UPDATE documents SET status='failed' WHERE id=?", (doc_id,))
-            db.add_audit(c, doc_id, "extraction_failed", error=str(ex))
+            db.add_audit(c, doc_id, "extraction_failed", error=why["raw"], why=why["why"])
         return doc_id
 
     reason = review_reason(e)

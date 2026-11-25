@@ -107,3 +107,62 @@ def test_refresh_after_a_colleagues_reply_brings_the_new_request_without_losing_
     assert done is None or done["flow"]["status"] == "done"                                      # progress is not lost (it may also have left the list)
     assert isinstance(r["new"], list)
     store.now = __import__("time").time
+
+
+# ---- found by the one-week simulation: a card that cites a mail AND my issue must still be workable as an issue ----
+def test_a_card_with_a_mail_and_an_issue_is_an_issue_card_and_the_issue_is_what_moves():
+    from app.assistant import flow
+    card = {"key": "k1", "source_ids": ["mail-md1", "iss-i2"], "title": "결제 연동 지연"}
+    assert flow.kind_of(card) == "issue" and flow.raw_id(card) == "i2"                 # not "mail", not "md1"
+    assert flow.kind_of({"source_ids": ["ntc-n1", "mail-m1"]}) == "mail"             # mail outranks notice
+    assert flow.kind_of({"source_ids": ["ntc-n1"]}) == "notice" and flow.raw_id({"source_ids": ["ntc-n1"]}) == "n1"
+    assert flow.kind_of({"source_ids": ["msg-x"]}) == "other"
+
+
+def test_sending_the_reply_does_not_finish_a_card_that_also_has_an_issue(client, monkeypatch):
+    import json
+    from app import db
+    from app.assistant import flow
+    from app.assistant.sources import User
+    u = User("u_dev1", "이서연", "employee", "개발")
+    card = {"key": "kk", "title": "t", "priority": "high", "due": None, "reason": "r", "source_ids": ["mail-md1", "iss-i2"]}
+    with db.conn() as c:
+        c.execute("INSERT INTO briefings(user_id,day,payload) VALUES(?,?,?)", ("u_dev1", flow.today(), json.dumps({"todos": [card]})))
+    flow.reply_sent(u, "kk", "박준영", "s1")
+    assert flow.flows("u_dev1").get("kk") is None                                     # still open: the issue has not been started or resolved
+    mail_only = {**card, "key": "k2", "source_ids": ["mail-md1"]}
+    with db.conn() as c:
+        c.execute("UPDATE briefings SET payload=? WHERE user_id=? AND day=?", (json.dumps({"todos": [card, mail_only]}), "u_dev1", flow.today()))
+    flow.reply_sent(u, "k2", "박준영", "s2")
+    assert flow.flows("u_dev1")["k2"]["status"] == "done"                              # a plain mail todo is finished by the reply, as before
+
+
+def test_provider_failure_gives_a_marked_template_draft_that_never_counts_as_evidence(env, monkeypatch):
+    from app.assistant import actions
+    c, world, tok = env
+    b = brief(c, "u_dev1")
+    t = next(t for t in b["todos"] if any(s.startswith("mail-") for s in t["source_ids"]))
+    def boom(*a, **k): raise RuntimeError("HTTP 429 RESOURCE_EXHAUSTED quota")
+    real = actions.draft
+    monkeypatch.setattr(actions, "draft", boom)
+    r = c.post("/assistant/actions/propose", json={"user_id": "u_dev1", "todo_key": t["key"]})
+    assert r.status_code == 201, r.text                                         # was a bare HTTP 500
+    a = r.json()
+    assert a["status"] == "proposed" and a["note"].startswith("[기본 서식]") and a["draft_body"]
+    monkeypatch.setattr(actions, "draft", real)                                  # model back: regenerate replaces the stand-in
+    r2 = c.post("/assistant/actions/propose", json={"user_id": "u_dev1", "todo_key": t["key"], "regenerate": True})
+    assert r2.status_code == 201 and not (r2.json()["note"] or "").startswith("[기본 서식]")
+
+
+def test_failed_document_explains_why_and_can_be_retried(client, monkeypatch):
+    from app import pipeline
+    def boom(*a, **k): raise RuntimeError("HTTP 429 quota exceeded")
+    real = pipeline.extract
+    monkeypatch.setattr(pipeline, "extract", boom)
+    did = pipeline.process("출장비 정산 요청합니다. 85만원")
+    d = next(x for x in client.get("/documents").json() if x["id"] == did)
+    assert d["status"] == "failed" and d["failure"]["why"]
+    monkeypatch.setattr(pipeline, "extract", real)
+    assert client.post(f"/documents/{did}/retry").json()["status"] != "failed"
+    assert client.post(f"/documents/{did}/retry").status_code == 409            # only failed documents are retried
+    assert client.post("/documents/999999/retry").status_code == 404

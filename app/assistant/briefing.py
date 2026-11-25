@@ -45,6 +45,22 @@ def _reason(body: str) -> str:
     return pick[:80]
 
 
+def ensure_obligations(raw, safe) -> dict:
+    """Code, not prompt: a notice that obliges the reader to act by a deadline (mandatory training, a submission date) is ALWAYS a todo until it is
+    acknowledged, whatever the model (or the keyword rules) did. Acknowledged notices are already filtered out of `safe`."""
+    raw = raw if isinstance(raw, dict) else {}
+    todos = [t for t in (raw.get("todos") if isinstance(raw.get("todos"), list) else []) if isinstance(t, dict)]
+    cited = {sid for t in todos for sid in (t.get("source_ids") or []) if isinstance(sid, str)}
+    for i in safe:
+        if i.id in cited or not is_obligation(i.source, i.title, i.body):
+            continue
+        due = due_text(i.title, i.body)
+        urgent = bool(due and ("오늘" in due or "금일" in due))
+        todos.append({"title": i.title, "priority": "high" if urgent else "normal", "due": due,
+                      "reason": "마감이 있는 공지예요" + (f": {due}" if due else "") + ". 확인하면 처리 기록이 남아요.", "source_ids": [i.id]})
+    return {**raw, "todos": todos}
+
+
 def _can_act_on(user, issue) -> bool:
     """An issue is somebody's todo only if they may change it: the assignee, or an executive for an escalated one (the tracker enforces the same rule).
     Showing anything else as a todo would be a task nobody can start or finish."""
@@ -111,28 +127,8 @@ def _finish(raw: dict, items, flagged_ids: set) -> dict:
     return {"summary": raw.get("summary", ""), "todos": todos, "fyi": fyi, "dropped_ungrounded": d1 + d2}
 
 
-_KEY_LIKE = re.compile(r"(AIza[0-9A-Za-z_\-]{10,}|sk-[A-Za-z0-9_\-]{10,}|Bearer\s+\S+)")
-
-
-def explain_llm_failure(err: str) -> dict:
-    """Why the model could not answer, in words a person can act on. The raw text is kept short and scrubbed of anything that looks like a key."""
-    e = err or ""
-    low = e.lower()
-    if "429" in e or "too many requests" in low or "quota" in low:
-        why = "모델 요청 한도를 넘었어요(429). 잠시 뒤 다시 하거나, 한도가 더 큰 키를 쓰세요."
-    elif "401" in e or "403" in e or "unauthorized" in low or "forbidden" in low or "api key" in low:
-        why = "키가 없거나 잘못됐거나 이 모델을 쓸 권한이 없어요(401/403)."
-    elif "404" in e or "not found" in low:
-        why = "모델 이름이나 주소가 잘못됐어요(404). LLM_MODEL과 LLM_BASE_URL을 확인하세요."
-    elif "timeout" in low or "timed out" in low:
-        why = "모델 응답이 너무 느려서 시간이 초과됐어요."
-    elif "no json" in low or "jsondecode" in low or "expecting" in low:
-        why = "모델이 약속한 JSON 형식으로 답하지 않았어요."
-    elif any(c in e for c in ("500", "502", "503", "504")):
-        why = "모델 서버 쪽 오류예요(5xx). 잠시 뒤 다시 하세요."
-    else:
-        why = "모델 호출 중 알 수 없는 오류가 났어요."
-    return {"why": why, "raw": _KEY_LIKE.sub("***", e)[:200]}
+from .obligations import due_text, is_obligation
+from ..llm.explain import explain_llm_failure  # noqa: E402,F401  (kept importable from here)
 
 
 def build_briefing(user, items, client) -> dict:
@@ -149,6 +145,7 @@ def build_briefing(user, items, client) -> dict:
         except Exception as ex:
             raw, degraded, reason = rule_based(user, safe), True, explain_llm_failure(str(ex))
             log.warning("briefing for %s fell back to rules: %s | %s", user.id, reason["why"], reason["raw"])
+    raw = ensure_obligations(raw, safe)
     out = _finish(raw, safe, flagged_ids)
     # guard in code, not only in the prompt: someone else's issue is never my todo (executives see escalated items by design)
     mine = {i.id for i in safe if i.source != "issue" or _can_act_on(user, i)}

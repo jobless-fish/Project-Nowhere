@@ -65,7 +65,8 @@ def test_ungrounded_and_injection_cited_todos_are_dropped(client):
         {"title": "보고서 회신", "priority": "high", "source_ids": ["m1"]},
         {"title": "출처 없음", "priority": "normal", "source_ids": []}], "fyi": []}
     out = br.build_briefing(u, items, Fake(bad))
-    assert [t["title"] for t in out["todos"]] == ["보고서 회신"] and out["dropped_ungrounded"] == 3
+    # the model's bad cards are dropped (3), and the mandatory notice the model overlooked is added back by code (ensure_obligations)
+    assert [t["title"] for t in out["todos"]] == ["보고서 회신", "정보보안 교육 필수 이수 안내"] and out["dropped_ungrounded"] == 3
 
 
 def test_llm_failure_degrades_to_rules(client):
@@ -92,7 +93,8 @@ def test_llm_payload_marks_my_issues_and_unassigned_issue_todos_are_dropped(clie
     assert flags[mine.id] is True and flags[other.id] is False
     out = br.build_briefing(u, items, Fake({"summary": "s", "fyi": [], "todos": [
         {"title": "남의 이슈", "priority": "high", "source_ids": [other.id]}, {"title": "내 이슈", "priority": "high", "source_ids": [mine.id]}]}))
-    assert [t["title"] for t in out["todos"]] == ["내 이슈"] and out["dropped_unassigned"] == 1
+    # (plus the mandatory notice the fake model never mentioned: code adds it back)
+    assert [t["title"] for t in out["todos"]] == ["내 이슈", "정보보안 교육 필수 이수 안내"] and out["dropped_unassigned"] == 1
 
 
 def test_news_digest_stays_short_even_in_a_busy_company(client):
@@ -112,3 +114,39 @@ def test_news_digest_stays_short_even_in_a_busy_company(client):
     assert raw["highlights"][0]["category"] in ("notice", "post")           # official news first
     assert any("새 메시지" in h["title"] for h in raw["highlights"])         # chat is grouped per channel
     assert d["highlights"] == []                                              # an empty LLM answer is honoured, not padded
+
+
+# ---- found by the one-week simulation: mandatory / deadline notices must never be missed, by the model or by the rules ----
+def _notice(title, body, nid="n9"):
+    from app.assistant.sources import Item
+    return Item(nid, "notice", title, body, "공지", 3.0, ["u1"])
+
+
+def test_deadline_notice_without_the_word_mandatory_is_still_a_todo_for_the_rules(client):
+    from app.assistant.sources import User
+    u = User("u1", "테스터", "executive", "경영")
+    out = br.build_briefing(u, [_notice("월말 결산 일정 안내", "11월 경비 정산은 11/27(금) 17시까지 제출해 주세요. 마감 이후 건은 다음 달에 처리됩니다.")], Fake({}))
+    assert [t["title"] for t in out["todos"]] == ["월말 결산 일정 안내"] and out["todos"][0]["due"] == "11/27(금) 17시까지"
+
+
+def test_a_model_that_overlooks_a_mandatory_notice_is_corrected_by_code(client):
+    from app.assistant.sources import User
+    u = User("u1", "테스터", "executive", "경영")
+    items = [_notice("정보보안 교육 필수 이수 안내", "12월 10일까지 필수 이수해야 합니다."), _notice("사옥 주차 이용 안내", "지하 2층은 등록 차량만 이용할 수 있어요.", "n8")]
+    out = br.build_briefing(u, items, Fake({"summary": "s", "todos": [], "fyi": []}))          # the model returned nothing
+    assert [t["title"] for t in out["todos"]] == ["정보보안 교육 필수 이수 안내"]                    # the plain announcement stays out
+    assert out["degraded"] is False
+
+
+def test_an_acknowledged_notice_is_not_added_back(client):
+    from app.assistant.sources import Item, User
+    u = User("u1", "테스터", "executive", "경영")
+    it = Item("n1", "notice", "정보보안 교육 필수 이수 안내", "12월 10일까지 필수 이수", "공지", 3.0, ["u1"], done=True)
+    assert br.build_briefing(u, [it], Fake({"summary": "s", "todos": [], "fyi": []}))["todos"] == []
+
+
+def test_the_hide_guard_and_the_todo_rule_agree_on_what_a_deadline_notice_is(client):
+    from app.assistant import mute
+    for title, body in (("월말 결산 일정 안내", "11/27(금) 17시까지 제출해 주세요"), ("정보보안 교육 필수 이수 안내", "")):
+        assert mute.guard_reason("notice", title, body)                 # cannot be hidden ...
+    assert mute.guard_reason("notice", "사옥 주차 이용 안내", "등록 차량만 이용할 수 있어요") is None

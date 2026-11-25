@@ -16,6 +16,12 @@ export default function Reply({ uid, action, busy, onPropose, onChanged }: Props
   if (action.status === "failed") return <p className="small" role="alert"><Badge kind="urgent">발송 실패</Badge> {action.note}</p>;
   if (action.status === "blocked") return <div className="banner" role="status"><span>{action.note}</span></div>;
 
+  const stand_in = (action.note ?? "").startsWith("[기본 서식]");
+  const regenerate = async () => {
+    setErr("");
+    try { await api.post("/assistant/actions/propose", { user_id: uid, todo_key: action.todo_key, regenerate: true }); onChanged(); }
+    catch { setErr("AI가 아직 응답하지 않아요. 잠시 뒤에 다시 눌러 주세요."); }
+  };
   const decide = async (approve: boolean) => {
     setErr("");
     try {
@@ -27,6 +33,8 @@ export default function Reply({ uid, action, busy, onPropose, onChanged }: Props
     <div className="stack" data-guide="draft-panel" style={{ gap: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
       <div className="row wrap small"><b>받는 사람</b><span>{action.to_name}</span>{action.external ? <Badge kind="warn">외부</Badge> : <Badge>사내</Badge>}
         <span className="faint">AI 초안입니다. 보내기 전에 꼭 확인하세요.</span></div>
+      {stand_in && <div className="banner" role="status"><span>{action.note}</span>
+        <button className="btn sm" onClick={regenerate}>AI로 다시 만들기</button></div>}
       <label className="small muted" htmlFor={`s${action.id}`}>제목</label>
       <input id={`s${action.id}`} value={subject ?? action.draft_subject} onChange={(e) => setSubject(e.target.value)} />
       <label className="small muted" htmlFor={`b${action.id}`}>본문</label>

@@ -41,6 +41,8 @@ def _row(r):
     d = dict(r)
     d["extraction"] = json.loads(d["extraction"]) if d["extraction"] else None
     d["audit"] = json.loads(d["audit"])
+    last = next((e for e in reversed(d["audit"]) if e.get("event") == "extraction_failed"), None)
+    d["failure"] = {"why": last.get("why") or "AI 호출에 실패했어요.", "raw": last.get("error")} if d["status"] == "failed" and last else None   # people read this, not the audit log
     return d
 
 
@@ -53,6 +55,17 @@ def health():
 @app.post("/documents", dependencies=[Depends(auth)], status_code=201)
 def submit(body: SubmitIn):
     doc_id = pipeline.process(body.text, body.source)
+    return get_document(doc_id)
+
+
+@app.post("/documents/{doc_id}/retry", dependencies=[Depends(auth)])
+def retry_document(doc_id: int):
+    try:
+        pipeline.retry(doc_id)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(409, str(e))
     return get_document(doc_id)
 
 
